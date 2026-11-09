@@ -53,6 +53,8 @@ class IncidentMemory(Protocol):
 
     def list_recent(self, limit: int = 50) -> list[RecalledMemory]: ...
 
+    def close(self) -> None: ...
+
 
 def _item(incident: Incident) -> dict:
     return {
@@ -79,6 +81,19 @@ class HindsightIncidentMemory:
         self._client = client
         self.bank_id = bank_id
         self._bank_ready = False
+
+    def close(self) -> None:
+        """Release the client's HTTP session (avoids aiohttp 'Unclosed client session' warnings)."""
+        try:
+            self._client.close()
+        except Exception as exc:  # noqa: BLE001
+            log.debug("close failed: %s", exc)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc) -> None:
+        self.close()
 
     # -- bank -------------------------------------------------------------
     def ensure_bank(self) -> None:
@@ -186,6 +201,9 @@ class InMemoryIncidentMemory:
         self.incidents: list[Incident] = []
 
     def ensure_bank(self) -> None:
+        return None
+
+    def close(self) -> None:
         return None
 
     def retain_incident(self, incident: Incident) -> None:

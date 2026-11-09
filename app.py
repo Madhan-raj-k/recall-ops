@@ -140,3 +140,6 @@ with tab_explore:
             st.dataframe([{"type": m.type, "when": (m.occurred or "")[:10], "source": m.document_id, "memory": m.text} for m in rows], width="stretch")
         except MemoryError_ as exc:
             st.error(str(exc))
+
+# Release the Hindsight HTTP session created for this rerun.
+memory.close()

@@ -12,6 +12,11 @@ from models import Incident, RecalledMemory, utcnow
 
 log = logging.getLogger(__name__)
 
+# Hindsight fills the recall token budget with many small extracted facts (60-90 for a
+# payments alert in our live runs). They come back best-first, so the prompt keeps the top
+# ones; the UI still shows everything that was recalled.
+MAX_PROMPT_MEMORIES = 30
+
 SYSTEM_PROMPT = (
     "You are RecallOps, an incident-response copilot for the on-call engineer of an e-commerce company. "
     "Write a concise, ranked triage plan in Markdown with these sections: "
@@ -113,7 +118,10 @@ def triage(
     if llm is not None:
         user = f"New alert:\n{alert}\n\n"
         if has_memory:
-            user += f"Relevant memories from past incidents (Hindsight recall):\n{_format_memories(result.memories)}\n\n"
+            user += (
+                "Relevant memories from past incidents (Hindsight recall, best first):\n"
+                f"{_format_memories(result.memories[:MAX_PROMPT_MEMORIES])}\n\n"
+            )
             if result.reflection:
                 user += f"Hindsight reflect summary:\n{result.reflection}\n\n"
         else:

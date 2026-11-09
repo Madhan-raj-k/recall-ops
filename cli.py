@@ -22,6 +22,8 @@ def _print(title: str, res) -> None:
     for w in res.warnings:
         print(f"[warning] {w}")
     print(res.plan)
+    if res.reflection:
+        print(f"\n-- Hindsight reflect --\n{res.reflection[:1200]}")
     if res.memories:
         print(f"\n-- {len(res.memories)} memories recalled --")
         for m in res.memories[:8]:
@@ -48,11 +50,15 @@ def main(argv: list[str] | None = None) -> int:
         mem = build_memory(s)
     llm = None if args.offline else build_llm(s)
 
-    if args.cmd == "triage":
-        _print("Memory OFF" if args.no_memory else f"Memory ON ({mem.name})", triage(args.alert, mem, llm, use_memory=not args.no_memory))
-    else:
-        _print("Memory OFF", triage(args.alert, mem, llm, use_memory=False))
-        _print(f"Memory ON ({mem.name})", triage(args.alert, mem, llm, use_memory=True))
+    try:
+        if args.cmd == "triage":
+            title = "Memory OFF" if args.no_memory else f"Memory ON ({mem.name})"
+            _print(title, triage(args.alert, mem, llm, use_memory=not args.no_memory))
+        else:
+            _print("Memory OFF", triage(args.alert, mem, llm, use_memory=False))
+            _print(f"Memory ON ({mem.name})", triage(args.alert, mem, llm, use_memory=True))
+    finally:
+        mem.close()
     return 0
 
 

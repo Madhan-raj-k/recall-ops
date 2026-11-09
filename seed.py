@@ -29,17 +29,17 @@ def main(argv: list[str] | None = None) -> int:
     if not s.hindsight_ready:
         print("HINDSIGHT_API_KEY is not set (see .env.example).", file=sys.stderr)
         return 2
-    mem = HindsightIncidentMemory(s.hindsight_base_url, s.hindsight_api_key, s.bank_id)
-    mem.ensure_bank()
     total = 0
-    for i in range(0, len(incidents), args.batch_size):
-        chunk = incidents[i : i + args.batch_size]
-        try:
-            total += mem.retain_incidents(chunk)
-        except MemoryError_ as exc:
-            print(f"Failed on batch starting {chunk[0].incident_id}: {exc}", file=sys.stderr)
-            return 1
-        print(f"Retained {chunk[0].incident_id}..{chunk[-1].incident_id}")
+    with HindsightIncidentMemory(s.hindsight_base_url, s.hindsight_api_key, s.bank_id) as mem:
+        mem.ensure_bank()
+        for i in range(0, len(incidents), args.batch_size):
+            chunk = incidents[i : i + args.batch_size]
+            try:
+                total += mem.retain_incidents(chunk)
+            except MemoryError_ as exc:
+                print(f"Failed on batch starting {chunk[0].incident_id}: {exc}", file=sys.stderr)
+                return 1
+            print(f"Retained {chunk[0].incident_id}..{chunk[-1].incident_id}")
     print(f"Done: {total} incidents retained into bank '{s.bank_id}' at {s.hindsight_base_url}")
     return 0
 

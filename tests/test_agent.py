@@ -104,3 +104,17 @@ def test_record_resolution_validates():
     with pytest.raises(ValueError):
         record_resolution(InMemoryIncidentMemory(), title="t", service="s", severity="SEV3", symptoms="",
                           root_cause="c", what_worked="x", time_to_resolve_min=-1)
+
+
+def test_prompt_keeps_only_top_memories():
+    from agent import MAX_PROMPT_MEMORIES
+    from models import RecalledMemory
+
+    class Many(InMemoryIncidentMemory):
+        def recall_similar(self, query, max_tokens=2048):
+            return [RecalledMemory(text=f"fact-{i}", document_id=f"INC-{i}") for i in range(80)]
+
+    llm = FakeLLM()
+    res = triage(ALERT, Many(), llm, use_memory=True, include_reflection=False)
+    assert len(res.memories) == 80
+    assert f"fact-{MAX_PROMPT_MEMORIES - 1}" in llm.calls[0] and f"fact-{MAX_PROMPT_MEMORIES}\n" not in llm.calls[0]
