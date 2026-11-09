@@ -18,14 +18,14 @@ async function start() {
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, mobile ? 1.5 : 1.75));
   renderer.setSize(window.innerWidth, window.innerHeight, false);
   const scene = new THREE.Scene();
-  scene.fog = new THREE.FogExp2(0x02040b, 0.035);
+  scene.fog = new THREE.FogExp2(0x050505, 0.035);
   const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 120);
   camera.position.set(0, 12, 0);
   const CX = mobile ? 0 : 5.5; // vortex sits right of the headline on desktop
 
   // Particles in a loose helical column; drift speed + phase per particle.
   const pos = new Float32Array(COUNT * 3), col = new Float32Array(COUNT * 3), seed = new Float32Array(COUNT), size = new Float32Array(COUNT);
-  const palette = [new THREE.Color("#67e8f9"), new THREE.Color("#2dd4bf"), new THREE.Color("#a78bfa"), new THREE.Color("#e0f2fe")];
+  const palette = [new THREE.Color("#d4d4d4"), new THREE.Color("#a8a8a8"), new THREE.Color("#8a8a8a"), new THREE.Color("#ededed")];
   for (let i = 0; i < COUNT; i++) {
     const r = 1.5 + Math.pow(Math.random(), 0.7) * 11;
     const a = Math.random() * Math.PI * 2;

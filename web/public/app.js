@@ -69,9 +69,9 @@ function streamIn(el, html) {
   const kids = el.querySelectorAll(":scope > *, :scope li");
   gsap.from(kids, { opacity: 0, y: 10, filter: "blur(4px)", duration: 0.45, ease: "power2.out", stagger: { each: 0.05, amount: 1.6 } });
 }
-const CONF = { low: [0.22, "#fb7185"], medium: [0.58, "#fbbf24"], high: [0.92, "#5eead4"] };
+const CONF = { low: [0.22, "#6b6b6b"], medium: [0.58, "#b3b3b3"], high: [0.92, "#ffffff"] };
 function meter(el, conf) {
-  const [v, color] = CONF[conf] || [0, "#64748b"];
+  const [v, color] = CONF[conf] || [0, "#727272"];
   const L = 125.7; // half-circle length for r=40
   el.innerHTML = `<svg viewBox="0 0 100 62" aria-label="confidence ${esc(conf || "unknown")}"><path class="track" d="M10 52 A40 40 0 0 1 90 52" fill="none" stroke-width="7"/><path class="arc" d="M10 52 A40 40 0 0 1 90 52" fill="none" stroke-width="7" stroke="${color}" style="color:${color}" stroke-dasharray="${L}" stroke-dashoffset="${L}"/><text x="50" y="50" text-anchor="middle" class="mlabel">${esc(conf || "—")}</text></svg>`;
   const arc = el.querySelector(".arc"), off = L * (1 - v);
@@ -105,7 +105,7 @@ api("/api/health").then((h) => {
     $("examples").appendChild(b);
   });
   if (!$("alert").value) { $("alert").value = h.examples[0]; countAlert(); }
-}).catch(() => { $("svcStatus").innerHTML = `<span style="color:#fda4af">API unavailable</span>`; });
+}).catch(() => { $("svcStatus").innerHTML = `<span style="color:#e0e0e0">API unavailable</span>`; });
 const countAlert = () => { $("alertCount").textContent = `${$("alert").value.length}/500`; };
 $("alert").addEventListener("input", countAlert);
 
@@ -193,7 +193,7 @@ $("resForm").onsubmit = async (ev) => {
     const r = await api("/api/resolve", { method: "POST", body: JSON.stringify(fd) });
     stop();
     $("resOut").innerHTML = `<div class="ok">Retained <b class="font-mono">${esc(r.incident_id)}</b>. Triage a similar alert above and watch it surface.</div>
-      <details class="mt-2"><summary class="cursor-pointer text-slate-400 text-sm">What was sent to Hindsight retain()</summary><pre class="pm">${esc(r.memory_text)}\n\ntags: ${esc(r.tags.join(", "))}\ntimestamp: ${esc(r.timestamp)}</pre></details>`;
+      <details class="mt-2"><summary class="cursor-pointer text-neutral-400 text-sm">What was sent to Hindsight retain()</summary><pre class="pm">${esc(r.memory_text)}\n\ntags: ${esc(r.tags.join(", "))}\ntimestamp: ${esc(r.timestamp)}</pre></details>`;
     $("resForm").reset(); window.dispatchEvent(new Event("recall-pulse"));
   } catch (e) { stop(); $("resOut").innerHTML = errBox(e.message); }
   $("resBtn").disabled = false;

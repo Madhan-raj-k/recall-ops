@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>RecallOps · the on-call agent that never forgets</title>
 <meta name="description" content="RecallOps dives into your incident memory with Hindsight agent memory: recall past outages, reflect like a senior SRE, and get a ranked triage plan. Memory OFF vs ON, side by side." />
-<meta name="theme-color" content="#02040b" />
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Ccircle cx=%2216%22 cy=%2216%22 r=%227%22 fill=%22%2322d3ee%22/%3E%3Ccircle cx=%2216%22 cy=%2216%22 r=%2213%22 fill=%22none%22 stroke=%22%2322d3ee%22 stroke-opacity=%22.4%22 stroke-width=%222%22/%3E%3C/svg%3E" />
+<meta name="theme-color" content="#040404" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Ccircle cx=%2216%22 cy=%2216%22 r=%227%22 fill=%22%23e5e5e5%22/%3E%3Ccircle cx=%2216%22 cy=%2216%22 r=%2213%22 fill=%22none%22 stroke=%22%23e5e5e5%22 stroke-opacity=%22.4%22 stroke-width=%222%22/%3E%3C/svg%3E" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
@@ -27,14 +27,14 @@
 <!-- HUD -->
 <header class="hud-top">
   <a href="#top" class="brand"><span class="brand-dot"></span>RecallOps</a>
-  <nav class="hidden md:flex gap-6 text-[13px] text-slate-400">
+  <nav class="hidden md:flex gap-6 text-[13px] text-neutral-400">
     <a href="#problem">Problem</a><a href="#triage">Triage</a><a href="#learning">Learning curve</a><a href="#resolve">Retain</a><a href="#explorer">Memory</a><a href="#how">How it works</a>
   </nav>
   <a href="https://github.com/Madhan-raj-k/recall-ops" class="btn-ghost text-[13px]">GitHub ↗</a>
 </header>
 <aside class="depth" aria-live="off">
   <div class="depth-label">DEPTH</div>
-  <div class="depth-num"><span id="depthNum">0000</span><span class="text-cyan-300/70">m</span></div>
+  <div class="depth-num"><span id="depthNum">0000</span><span class="text-neutral-200/70">m</span></div>
   <div id="depthZone" class="depth-zone">surface · no memory</div>
   <div class="depth-bar"><div id="depthFill"></div></div>
 </aside>
@@ -80,8 +80,8 @@
     <textarea id="alert" maxlength="500" rows="2" class="field mt-4" placeholder="Paste an alert, e.g. PagerDuty SEV1: payments-api 5xx…"></textarea>
     <div class="flex flex-wrap items-center gap-4 mt-3">
       <button id="runTriage" class="btn-primary">Dive & triage</button>
-      <label class="text-sm flex items-center gap-2 text-slate-400"><input type="checkbox" id="useReflect" checked class="accent-cyan-400"> include Hindsight reflect</label>
-      <span id="alertCount" class="ml-auto text-xs font-mono text-slate-500">0/500</span>
+      <label class="text-sm flex items-center gap-2 text-neutral-400"><input type="checkbox" id="useReflect" checked class="accent-neutral-300"> include Hindsight reflect</label>
+      <span id="alertCount" class="ml-auto text-xs font-mono text-neutral-500">0/500</span>
     </div>
   </div>
   <div class="grid lg:grid-cols-2 gap-5 mt-5">
@@ -96,7 +96,7 @@
   </div>
   <div class="grid lg:grid-cols-5 gap-5 mt-5">
     <div class="glass p-5 lg:col-span-3">
-      <div class="flex items-baseline gap-3"><h3 class="h3">Recalled from the deep</h3><span id="recallCount" class="font-mono text-xs text-cyan-300/80"></span></div>
+      <div class="flex items-baseline gap-3"><h3 class="h3">Recalled from the deep</h3><span id="recallCount" class="font-mono text-xs text-neutral-200/80"></span></div>
       <div id="nodes" class="nodes"><span class="muted text-sm">Glowing nodes appear here: one per past incident Hindsight surfaces.</span></div>
       <ul id="recalled" class="mem-list"></ul>
     </div>
@@ -113,14 +113,14 @@
   <h2 class="h2 reveal">Dive deeper: watch it get smarter.</h2>
   <p class="lead reveal">You get a private, empty memory bank. Interaction 1 knows nothing. Retain one postmortem, ask the same question, and the plan goes from guesswork to specific.</p>
   <div class="glass p-5 md:p-6 mt-8 reveal">
-    <div class="font-mono text-[11px] tracking-widest text-cyan-300/70">SCENARIO ALERT</div>
-    <div id="lcAlert" class="mt-2 text-slate-100 font-mono text-sm leading-relaxed"></div>
+    <div class="font-mono text-[11px] tracking-widest text-neutral-200/70">SCENARIO ALERT</div>
+    <div id="lcAlert" class="mt-2 text-neutral-100 font-mono text-sm leading-relaxed"></div>
     <ol class="steps mt-6">
       <li class="step" id="s1"><div class="step-n">01</div><div class="step-t">Interaction 1 · empty memory</div><button id="lc1" class="btn-ghost sm">Triage</button><div id="lc1b" class="step-o"></div></li>
       <li class="step" id="s2"><div class="step-n">02</div><div class="step-t">Engineer resolves it · retain</div><button id="lc2" class="btn-ghost sm" disabled>Retain postmortem</button><div id="lc2b" class="step-o"></div></li>
       <li class="step" id="s3"><div class="step-n">03</div><div class="step-t">Interaction 2 · same alert</div><button id="lc3" class="btn-primary sm" disabled>Triage again</button><div id="lc3b" class="step-o"></div></li>
     </ol>
-    <details class="mt-5 text-sm"><summary class="cursor-pointer text-slate-400">The postmortem that gets retained (synthetic)</summary><pre id="lcPm" class="pm"></pre></details>
+    <details class="mt-5 text-sm"><summary class="cursor-pointer text-neutral-400">The postmortem that gets retained (synthetic)</summary><pre id="lcPm" class="pm"></pre></details>
     <div class="grid lg:grid-cols-2 gap-5 mt-6">
       <div class="sub"><div class="sub-h">Before · interaction 1 <span id="lcMeter1" class="meter sm"></span></div><div id="lcBefore" class="md out muted text-sm">—</div></div>
       <div class="sub sub-on"><div class="sub-h">After · interaction 2 <span id="lcMeter2" class="meter sm"></span></div><div id="lcAfter" class="md out muted text-sm">—</div></div>
@@ -170,7 +170,7 @@
   <div class="glass p-5 md:p-8 mt-8 reveal">
     <svg viewBox="0 0 900 260" class="w-full h-auto" role="img" aria-label="Diagram: postmortems are retained into the Hindsight bank; alerts recall and reflect from it to produce a plan">
       <defs>
-        <linearGradient id="g1" x1="0" x2="1"><stop offset="0" stop-color="#22d3ee"/><stop offset="1" stop-color="#a78bfa"/></linearGradient>
+        <linearGradient id="g1" x1="0" x2="1"><stop offset="0" stop-color="#d6d6d6"/><stop offset="1" stop-color="#bbbbbb"/></linearGradient>
         <filter id="glow"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
       </defs>
       <path class="flow" d="M150 70 C 300 70, 330 130, 450 130" />
@@ -183,22 +183,22 @@
       <text x="290" y="58" class="lbl">retain()</text><text x="290" y="222" class="lbl">recall() + reflect()</text><text x="600" y="118" class="lbl">grounded context → LLM</text>
     </svg>
     <div class="grid md:grid-cols-3 gap-4 mt-6 text-sm">
-      <div class="sub"><div class="font-mono text-cyan-300">retain()</div><p class="mt-2 text-slate-300">Each postmortem goes in with its real incident timestamp, the incident ID as <code>document_id</code>, and tags like <code>service:payments-api</code>. Hindsight extracts facts and entities and links them.</p></div>
-      <div class="sub"><div class="font-mono text-cyan-300">recall()</div><p class="mt-2 text-slate-300">Semantic + keyword + graph + temporal retrieval, reranked and cut to a 2,048-token budget. The top facts, with source incident IDs, ground the LLM.</p></div>
-      <div class="sub"><div class="font-mono text-violet-300">reflect()</div><p class="mt-2 text-slate-300">An agentic loop over the whole bank with an SRE mission: cite incidents, prefer fixes that worked, warn about fixes that failed.</p></div>
+      <div class="sub"><div class="font-mono text-neutral-200">retain()</div><p class="mt-2 text-neutral-300">Each postmortem goes in with its real incident timestamp, the incident ID as <code>document_id</code>, and tags like <code>service:payments-api</code>. Hindsight extracts facts and entities and links them.</p></div>
+      <div class="sub"><div class="font-mono text-neutral-200">recall()</div><p class="mt-2 text-neutral-300">Semantic + keyword + graph + temporal retrieval, reranked and cut to a 2,048-token budget. The top facts, with source incident IDs, ground the LLM.</p></div>
+      <div class="sub"><div class="font-mono text-neutral-200">reflect()</div><p class="mt-2 text-neutral-300">An agentic loop over the whole bank with an SRE mission: cite incidents, prefer fixes that worked, warn about fixes that failed.</p></div>
     </div>
   </div>
 </section>
 </main>
 
 <footer class="foot">
-  <div class="max-w-6xl mx-auto px-6 py-10 flex flex-wrap gap-x-7 gap-y-3 text-sm text-slate-400">
-    <span class="text-slate-200">RecallOps · Madhan Raj &amp; Faraz · MIT</span>
+  <div class="max-w-6xl mx-auto px-6 py-10 flex flex-wrap gap-x-7 gap-y-3 text-sm text-neutral-400">
+    <span class="text-neutral-200">RecallOps · Madhan Raj &amp; Faraz · MIT</span>
     <a href="https://github.com/Madhan-raj-k/recall-ops">Project repo</a>
     <a href="https://github.com/vectorize-io/hindsight">Hindsight on GitHub</a>
     <a href="https://hindsight.vectorize.io/">Hindsight docs</a>
     <a href="https://vectorize.io/what-is-agent-memory">What is agent memory?</a>
-    <span class="w-full text-xs text-slate-500">All incident data is synthetic (fictional company ShopNova). Public demo: rate-limited, inputs length-capped. Calls hit real Hindsight Cloud + Groq and take ~5–20 s.</span>
+    <span class="w-full text-xs text-neutral-500">All incident data is synthetic (fictional company ShopNova). Public demo: rate-limited, inputs length-capped. Calls hit real Hindsight Cloud + Groq and take ~5–20 s.</span>
   </div>
 </footer>
 
