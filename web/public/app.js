@@ -25,25 +25,13 @@ if (HAS_GSAP && !REDUCE) {
   gsap.from(".dnode", { scale: 0.4, opacity: 0, transformOrigin: "center", duration: 0.9, ease: "back.out(1.7)", stagger: 0.12, scrollTrigger: { trigger: "#how svg", start: "top 80%" } });
 }
 
-// ---------- depth counter ----------
-const ZONES = [
-  [0, "surface · no memory"], [0.12, "the problem · generic answers"], [0.25, "live triage · recalling incidents"],
-  [0.5, "learning curve · memory grows"], [0.66, "retain · postmortems sink in"], [0.8, "memory floor · every fact"], [0.93, "how it works"],
-];
-const MAX_DEPTH = 4200;
-let shownDepth = 0;
+// ---------- scroll depth (drives the background veil only) ----------
 function onScroll() {
   const max = document.documentElement.scrollHeight - window.innerHeight;
   const f = max > 0 ? Math.min(1, Math.max(0, window.scrollY / max)) : 0;
   document.documentElement.style.setProperty("--depth", f.toFixed(3));
-  const target = Math.round(f * MAX_DEPTH);
-  shownDepth += (target - shownDepth) * 0.25;
-  $("depthNum").textContent = String(Math.round(shownDepth)).padStart(4, "0");
-  $("depthFill").style.width = `${f * 100}%`;
-  let z = ZONES[0][1]; for (const [k, v] of ZONES) if (f >= k) z = v;
-  $("depthZone").textContent = z;
 }
-(function tick() { onScroll(); requestAnimationFrame(tick); })();
+window.addEventListener("scroll", onScroll, { passive: true }); onScroll();
 
 // ---------- UI helpers ----------
 const LOAD_MSGS_ON = ["descending into incident memory…", "recall(): semantic + keyword + graph + temporal…", "reranking past incidents…", "reflect(): reasoning like a senior SRE…", "grounding the plan in what worked…"];
@@ -97,7 +85,6 @@ async function api(path, opts = {}) {
 // ---------- status + examples ----------
 const LABELS = ["💳 payments-api 5xx after deploy", "🛒 empty carts · Redis evictions", "🗄️ orders DB pool timeouts", "🔒 mobile SSL handshake failures"];
 api("/api/health").then((h) => {
-  $("svcStatus").innerHTML = `memory <b>${esc(h.memory)}</b> · bank ${esc(h.bank)}<br/>llm <b>${esc(h.llm || "offline")}</b>`;
   h.examples.forEach((ex, i) => {
     const b = document.createElement("button");
     b.className = "chip"; b.textContent = LABELS[i] || ex.slice(0, 40); b.title = ex;
@@ -105,7 +92,7 @@ api("/api/health").then((h) => {
     $("examples").appendChild(b);
   });
   if (!$("alert").value) { $("alert").value = h.examples[0]; countAlert(); }
-}).catch(() => { $("svcStatus").innerHTML = `<span style="color:#e0e0e0">API unavailable</span>`; });
+}).catch(() => { $("examples").textContent = "API unavailable right now."; });
 const countAlert = () => { $("alertCount").textContent = `${$("alert").value.length}/500`; };
 $("alert").addEventListener("input", countAlert);
 
