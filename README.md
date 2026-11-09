@@ -1,6 +1,6 @@
 # RecallOps — the on-call copilot that remembers every incident
 
-**Live demo: https://recall-ops-madhan5.vercel.app** (Memory OFF vs ON triage, a learning-curve sandbox, retain form, memory explorer)
+**Live demo: https://recall-ops-three.vercel.app** (Memory OFF vs ON triage, a learning-curve sandbox, retain form, memory explorer)
 
 When an alert fires at 3 AM, the fix is often already known — it's buried in a postmortem
 nobody remembers, or in the head of an engineer who is asleep. **RecallOps** gives the
@@ -47,7 +47,9 @@ replica + batched-writes fix, warning against restarting pods.
 
 ## Web app (Vercel)
 
-`web/` is a single-page site plus a FastAPI backend (`web/api/index.py`) that reuses the same `agent.py`, `memory.py` and `llm.py`.
+`web/` is a single-page site (static HTML/CSS/JS with a subtle animated background and scroll reveals) plus a FastAPI backend (`web/api/index.py`) that reuses the same `agent.py`, `memory.py` and `llm.py`.
+
+![RecallOps website](docs/web-hero.png)
 
 - **Triage**: one-click sample alerts and Memory OFF vs ON side by side, with recalled memories (with source incident IDs) and the reflect output.
 - **Learning curve**: each visitor gets a private, empty Hindsight bank (`recallops-lc-<id>`). Interaction 1 is generic (confidence: low). After one postmortem is retained, the same alert gives a specific plan citing it (confidence: high).
@@ -190,5 +192,5 @@ an in-memory keyword store seeded with the same synthetic incidents (clearly lab
 - Hindsight docs: <https://hindsight.vectorize.io/>
 - What is agent memory? <https://vectorize.io/what-is-agent-memory>
 
-## Team
-Madhan Raj and Faraz. MIT licensed.
+## License
+MIT, see [LICENSE](LICENSE).
