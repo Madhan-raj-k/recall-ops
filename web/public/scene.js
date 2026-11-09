@@ -13,7 +13,7 @@ async function start() {
   catch { document.documentElement.classList.add("no-webgl"); canvas.remove(); return; }
 
   const mobile = window.innerWidth < 768;
-  const COUNT = mobile ? 1800 : 5000;
+  const COUNT = mobile ? 400 : 1000;
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, alpha: true, powerPreference: "low-power" });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, mobile ? 1.5 : 1.75));
   renderer.setSize(window.innerWidth, window.innerHeight, false);
@@ -35,7 +35,7 @@ async function start() {
     const c = palette[Math.random() < 0.55 ? 0 : Math.random() < 0.5 ? 1 : Math.random() < 0.75 ? 2 : 3];
     col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b;
     seed[i] = Math.random();
-    size[i] = Math.random() < 0.04 ? 3.2 + Math.random() * 2.5 : 0.8 + Math.random() * 1.4;
+    size[i] = Math.random() < 0.02 ? 1.8 + Math.random() * 0.8 : 0.6 + Math.random() * 0.6;
   }
   const geo = new THREE.BufferGeometry();
   geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
@@ -51,15 +51,15 @@ async function start() {
       uniform float uTime, uDepth, uPulse, uPx, uCx;
       void main(){
         vec3 p = position;
-        float t = uTime * (0.25 + seed * 0.5);
+        float t = uTime * (0.12 + seed * 0.25);
         p.y = mod(p.y + t * 2.2 + uDepth * 60.0 + 30.0, 60.0) - 30.0 - 18.0;   // rise toward the camera: we are sinking
-        float ang = uTime * 0.09 * (0.5 + seed) + p.y * 0.06;           // slow helical swirl
+        float ang = uTime * 0.04 * (0.5 + seed) + p.y * 0.06;           // slow helical swirl
         p.xz = mat2(cos(ang), -sin(ang), sin(ang), cos(ang)) * p.xz;
-        p.x += sin(uTime * 0.6 + seed * 40.0) * 0.25 + uCx;
+        p.x += sin(uTime * 0.3 + seed * 40.0) * 0.15 + uCx;
         vec4 mv = modelViewMatrix * vec4(p, 1.0);
         gl_Position = projectionMatrix * mv;
-        float tw = 0.55 + 0.45 * sin(uTime * (1.0 + seed * 2.5) + seed * 60.0);
-        gl_PointSize = psize * (1.0 + uPulse * 1.2) * uPx * (70.0 / -mv.z);
+        float tw = 0.7 + 0.3 * sin(uTime * (0.5 + seed * 1.2) + seed * 60.0);
+        gl_PointSize = psize * (1.0 + uPulse * 0.6) * uPx * (52.0 / -mv.z);
         vC = color; vA = tw * (0.25 + 0.75 * smoothstep(55.0, 4.0, -mv.z));
       }`,
     fragmentShader: `
@@ -67,7 +67,7 @@ async function start() {
       void main(){
         float d = length(gl_PointCoord - 0.5);
         float a = smoothstep(0.5, 0.0, d); a *= a;
-        gl_FragColor = vec4(vC * (1.5 + uPulse), min(1.0, a * vA * 1.7));
+        gl_FragColor = vec4(vC * (0.9 + uPulse * 0.5), a * vA * 0.85);
       }`,
   });
   const points = new THREE.Points(geo, mat);

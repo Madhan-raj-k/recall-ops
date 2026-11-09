@@ -135,6 +135,7 @@ button:disabled{opacity:.4;cursor:not-allowed;transform:none!important}
 .foot{border-top:1px solid rgba(148,163,184,.1);background:linear-gradient(180deg,rgba(2,4,11,.4),#02040b)}
 .reveal{will-change:transform,opacity}
 @media (max-width:900px){.steps{grid-template-columns:1fr}.svc{display:none}.hud-top nav{display:none}.hud-top{justify-content:space-between}}
+@media (max-width:640px){.hud-top .btn-ghost{padding:7px 14px;margin-right:4px}}
 @media (max-width:640px){#svcStatus{display:none}.depth{left:auto;right:12px;top:auto;bottom:12px;text-align:right;padding:6px 10px;border-radius:10px;background:rgba(2,8,20,.6);backdrop-filter:blur(6px)}.depth-zone,.depth-bar{display:none}.depth-num{font-size:20px}.hero-meta{gap:20px}.panel{min-height:0}}
 @media (prefers-reduced-motion:reduce){*{animation-duration:.001s!important;animation-iteration-count:1!important}}
 .hero::before{content:"";position:absolute;z-index:-1;right:0;top:12%;width:min(720px,70vw);aspect-ratio:1;border-radius:50%;background:radial-gradient(circle,rgba(34,211,238,.16),rgba(94,234,212,.06) 40%,transparent 68%);filter:blur(10px);pointer-events:none;animation:breathe 7s ease-in-out infinite}
