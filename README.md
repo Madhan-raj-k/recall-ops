@@ -1,5 +1,7 @@
 # RecallOps — the on-call copilot that remembers every incident
 
+**Live demo: https://recall-ops-madhan5.vercel.app** (Memory OFF vs ON triage, a learning-curve sandbox, retain form, memory explorer)
+
 When an alert fires at 3 AM, the fix is often already known — it's buried in a postmortem
 nobody remembers, or in the head of an engineer who is asleep. **RecallOps** gives the
 on-call engineer a ranked triage plan grounded in the team's own incident history, using
@@ -42,6 +44,25 @@ memories, and the plan led with *"Postgres lock contention on `points_ledger` �
 replica + batched-writes fix, warning against restarting pods.
 
 ![Memory explorer: last recall and stored memory units](docs/memory-explorer.png)
+
+## Web app (Vercel)
+
+`web/` is a single-page site plus a FastAPI backend (`web/api/index.py`) that reuses the same `agent.py`, `memory.py` and `llm.py`.
+
+- **Triage**: one-click sample alerts and Memory OFF vs ON side by side, with recalled memories (with source incident IDs) and the reflect output.
+- **Learning curve**: each visitor gets a private, empty Hindsight bank (`recallops-lc-<id>`). Interaction 1 is generic (confidence: low). After one postmortem is retained, the same alert gives a specific plan citing it (confidence: high).
+- **Record resolution**: retains a postmortem into the shared ShopNova bank.
+- **Memory explorer**: a timeline of stored facts and observations, or an ad-hoc recall.
+- **Public-demo guards**: per-IP rate limits (best effort, per warm instance), input length caps, sanitized error messages, `maxDuration: 60` for reflect.
+
+![Learning curve: interaction 1 generic, interaction 2 specific](docs/web-learning-curve.png)
+
+Run locally:
+```bash
+pip install -r requirements.txt fastapi uvicorn
+cd web && RECALLOPS_SERVE_STATIC=1 uvicorn api.index:app --port 8600   # http://localhost:8600
+```
+Deploy: `web/build_bundle.sh` assembles `web/` plus the core modules into one folder; deploy that folder to Vercel with the env vars from `.env.example`.
 
 ## Architecture
 

@@ -38,6 +38,23 @@ class MemoryError_(RuntimeError):
     """Raised when the memory backend is unreachable or rejects a request."""
 
 
+def _short(exc: Exception) -> str:
+    """Compact, user-safe error text (no HTTP headers or request internals)."""
+    status = getattr(exc, "status", None)
+    body = getattr(exc, "body", None)
+    detail = ""
+    if body:
+        try:
+            import json
+
+            detail = json.loads(body).get("detail", "") if isinstance(body, (str, bytes)) else ""
+        except Exception:  # noqa: BLE001
+            detail = str(body)[:160]
+    if status:
+        return f"HTTP {status}{': ' + str(detail)[:160] if detail else ''}"
+    return str(exc).splitlines()[0][:200] if str(exc) else type(exc).__name__
+
+
 class IncidentMemory(Protocol):
     name: str
 
@@ -126,7 +143,7 @@ class HindsightIncidentMemory:
         try:
             resp = self._client.retain_batch(bank_id=self.bank_id, items=[_item(i) for i in incidents])
         except Exception as exc:  # noqa: BLE001
-            raise MemoryError_(f"Hindsight retain failed: {exc}") from exc
+            raise MemoryError_(f"Hindsight retain failed ({_short(exc)})") from exc
         return int(getattr(resp, "items_count", None) or len(incidents))
 
     # -- recall -----------------------------------------------------------
@@ -142,7 +159,7 @@ class HindsightIncidentMemory:
                 budget="mid",
             )
         except Exception as exc:  # noqa: BLE001
-            raise MemoryError_(f"Hindsight recall failed: {exc}") from exc
+            raise MemoryError_(f"Hindsight recall failed ({_short(exc)})") from exc
         out: list[RecalledMemory] = []
         for r in getattr(resp, "results", None) or []:
             scores = getattr(r, "scores", None)
@@ -163,7 +180,7 @@ class HindsightIncidentMemory:
         try:
             resp = self._client.reflect(bank_id=self.bank_id, query=query, budget="low")
         except Exception as exc:  # noqa: BLE001
-            raise MemoryError_(f"Hindsight reflect failed: {exc}") from exc
+            raise MemoryError_(f"Hindsight reflect failed ({_short(exc)})") from exc
         return (getattr(resp, "text", "") or "").strip()
 
     # -- explorer ---------------------------------------------------------
@@ -171,7 +188,7 @@ class HindsightIncidentMemory:
         try:
             resp = self._client.list_memories(bank_id=self.bank_id, limit=limit)
         except Exception as exc:  # noqa: BLE001
-            raise MemoryError_(f"Hindsight list_memories failed: {exc}") from exc
+            raise MemoryError_(f"Hindsight list_memories failed ({_short(exc)})") from exc
         return [
             RecalledMemory(
                 text=i.text or "",
