@@ -117,7 +117,7 @@ with tab_explore:
     if last:
         st.markdown(f"**Last recall** for: _{last.alert}_ — {len(last.memories)} memories")
         st.dataframe(
-            [{"type": m.type, "when": (m.occurred or "")[:10], "source": m.document_id, "score": m.score, "memory": m.text} for m in last.memories],
+            [{"type": m.type, "when": (m.occurred or "")[:10], "source": m.document_id or "consolidated", "score": m.score, "memory": m.text} for m in last.memories],
             width="stretch",
         )
     q = st.text_input("Ad-hoc recall query", placeholder="What fixed Redis eviction before?")
@@ -125,7 +125,7 @@ with tab_explore:
     if c1.button("Recall", disabled=not q.strip()):
         try:
             hits = memory.recall_similar(q)
-            st.dataframe([{"type": m.type, "when": (m.occurred or "")[:10], "source": m.document_id, "memory": m.text} for m in hits], width="stretch")
+            st.dataframe([{"type": m.type, "when": (m.occurred or "")[:10], "source": m.document_id or "consolidated", "memory": m.text} for m in hits], width="stretch")
         except MemoryError_ as exc:
             st.error(str(exc))
     if c2.button("Reflect", disabled=not q.strip()):
@@ -137,7 +137,7 @@ with tab_explore:
         try:
             rows = memory.list_recent(limit=100)
             st.caption(f"{len(rows)} memory units")
-            st.dataframe([{"type": m.type, "when": (m.occurred or "")[:10], "source": m.document_id, "memory": m.text} for m in rows], width="stretch")
+            st.dataframe([{"type": m.type, "when": (m.occurred or "")[:10], "source": m.document_id or "consolidated", "memory": m.text} for m in rows], width="stretch")
         except MemoryError_ as exc:
             st.error(str(exc))
 

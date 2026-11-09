@@ -20,13 +20,28 @@ copilot doesn't help: with no history it can only say "check recent deploys, loo
 and it will happily suggest the exact fix that wasted 20 minutes last month (e.g. *scaling pods*
 for a connection-pool bug). The knowledge exists — it just isn't *remembered* at the moment it matters.
 
-## Before / after
+## Before / after (real run)
 
 Alert: `PagerDuty SEV1: payments-api 5xx rate 22% on /v2/charge, started 6 minutes after deploy v3.21.0`
+— same Groq model (`openai/gpt-oss-120b`), same prompt; the only difference is Hindsight recall + reflect.
+Output trimmed from a live run of `python cli.py compare "..."` against Hindsight Cloud:
 
-| Memory OFF (generic LLM) | Memory ON (Hindsight) |
+| Memory OFF | Memory ON (Hindsight) |
 |---|---|
-| "Check what changed recently, look at dashboards, consider rollback." Confidence: low. | Recalls INC-1001, INC-1016, INC-1013: past payments 5xx after deploys were a bad SDK timeout, a shrunken Hikari pool and a stale Vault secret. **Do first:** `argocd app rollback payments-api`, then check `maximumPoolSize` and the Vault secret version. **Avoid:** scaling pods / restarting pods (didn't help in INC-1001 and INC-1016). Escalate to payments + DBA. |
+| **Likely cause:** "Regression introduced in `v3.21.0` causing unhandled exceptions in the `/v2/charge` handler." | **Likely cause:** "Configuration regression introduced in v3.21.0 – e.g., Hikari `maximumPoolSize` reduced (as in INC‑1016)", then a Stripe SDK timeout change (INC‑1001) and a stale Vault secret (INC‑1013). |
+| **Do first:** grep the pod logs, `git diff v3.20.0..v3.21.0`, check downstream health. | **Do first:** `argocd app diff`, check `maximumPoolSize`, `STRIPE_HTTP_TIMEOUT` and the Vault secret version, then `argocd app rollback payments-api`. |
+| **Avoid:** generic advice ("blindly increasing replica count…"). | **Avoid:** "Scaling the payments‑api pods (worsened DB pool exhaustion in INC‑1016)", "Blind pod restarts (only gave temporary relief in INC‑1001 & INC‑1016)". |
+| **Confidence:** "Low – no prior incident data". | **Escalate to:** payments, SRE, **DBA**. **Confidence:** "Medium – … matches several recent config-related regressions (INC‑1016, INC‑1001, INC‑1013)". |
+
+![Triage side by side: Memory OFF vs Memory ON](docs/triage-side-by-side.png)
+
+**Learning loop (real run):** for a never-seen alert, `loyalty-points service returns 500 when tier recalculation job runs`,
+Memory ON only found loosely related incidents (DB pool exhaustion, Redis eviction, a bad feature flag). After one postmortem was
+retained through `agent.record_resolution()`, the very next recall (no waiting needed) returned the new incident as its top
+memories, and the plan led with *"Postgres lock contention on `points_ledger` … (see INC‑20261109‑71C2)"* and the
+replica + batched-writes fix, warning against restarting pods.
+
+![Memory explorer: last recall and stored memory units](docs/memory-explorer.png)
 
 ## Architecture
 
@@ -50,7 +65,7 @@ flowchart LR
 | `app.py` | Streamlit UI: Triage (side-by-side), Record resolution, Memory explorer |
 | `seed.py` / `incidents_data.py` | 18 synthetic past incidents spread over ~8 weeks |
 | `cli.py` | `triage` and `compare` from the terminal |
-| `tests/` | 23 unit tests with fake Hindsight / fake LLM clients (no keys needed) |
+| `tests/` | 24 unit tests with fake Hindsight / fake LLM clients (no keys needed) |
 
 ## How Hindsight memory is used
 
@@ -117,7 +132,7 @@ cp .env.example .env     # then fill in the keys
 ```bash
 python seed.py            # retain 18 synthetic incidents into your bank (python seed.py --dry-run to preview)
 streamlit run app.py      # open http://localhost:8501
-python -m pytest          # 23 tests, no keys needed
+python -m pytest          # 24 tests, no keys needed
 ```
 
 No keys yet? `streamlit run app.py` and `python cli.py --offline compare "payments-api 5xx after deploy"` still work using
@@ -143,7 +158,9 @@ an in-memory keyword store seeded with the same synthetic incidents (clearly lab
 ## Limitations
 - Memory quality depends on postmortem quality: a vague "restarted stuff, it worked" teaches very little.
 - Similar symptoms can have different causes (three different payments 5xx root causes in the demo data). RecallOps ranks hypotheses, it does not prove one — the engineer still verifies.
-- Retain extraction is asynchronous on the server side for consolidation; observations improve over minutes, not instantly.
+- Recall returns many small extracted facts (60–90 for the payments alert in our runs). The agent sends the top 30 to the LLM and shows all of them in the UI.
+- Observations are consolidated in the background, so they can lag behind raw facts; in our runs the new postmortem's raw facts were recallable immediately.
+- A Memory ON triage with reflect takes roughly 10–20 s (recall + reflect + LLM), which is fine for triage but not instant.
 - The offline fallback is simple keyword overlap, only for keyless demos; the real retrieval quality comes from Hindsight.
 - No live integrations yet (PagerDuty, Slack, Grafana); alerts are pasted in.
 
