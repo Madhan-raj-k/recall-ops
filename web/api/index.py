@@ -378,8 +378,11 @@ def wf_compare(body: InvestigateIn, request: Request):
     alert = _clean(body.alert, MAX_ALERT)
     if not alert:
         raise HTTPException(422, "Incident description is empty.")
-    off = _investigate(alert, False)
-    on = _investigate(alert, True)
+    from concurrent.futures import ThreadPoolExecutor
+
+    with ThreadPoolExecutor(max_workers=2) as pool:  # same input, both modes in parallel (fits the 60 s limit)
+        f_off, f_on = pool.submit(_investigate, alert, False), pool.submit(_investigate, alert, True)
+        off, on = f_off.result(), f_on.result()
     return {"alert": alert, "same_input": off["alert"] == on["alert"] == alert, "off": off, "on": on,
             "table": wf.compare_rows(off, on)}
 

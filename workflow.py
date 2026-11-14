@@ -116,7 +116,7 @@ Rules: low risk = read-only diagnostics; medium = reversible changes; high = dis
 delete, failover). Cite ONLY incident IDs listed under HISTORICAL INCIDENTS. If none are listed, every action
 must have incident_id null and historical_outcome "unknown", supporting_evidence must be [], and you must say in
 missing_information that no organizational history was available. Never invent incidents or outcomes.
-Give 2-4 actions, the first one a low-risk diagnostic."""
+Give 2-3 actions, the first one a low-risk diagnostic. Keep every string under 30 words."""
 
 _HIGH = re.compile(r"\b(roll(?:ed|ing)? ?back|rollback|restart|delet|drop|flush|failover|terminat|kill|unlink|reindex|re-?appl|purg|redeploy)\w*", re.I)
 _MED = re.compile(r"\b(scal|increas|rais|set|enabl|disabl|pin|mov|chang|updat|config|switch|resiz)\w*", re.I)
@@ -272,6 +272,10 @@ def investigate(alert: str, memory: IncidentMemory | None, llm: LLM | None, use_
             for r in incidents
         )
         user = f"NEW INCIDENT:\n{alert}\n\nHISTORICAL INCIDENTS:\n{hist or '(none: memory ' + ('returned no matches' if use_memory else 'is OFF') + ')'}"
+        if hasattr(llm, "max_tokens"):
+            llm.max_tokens = max(llm.max_tokens, 3500)  # structured JSON + reasoning tokens
+        if hasattr(llm, "max_retries"):
+            llm.max_retries = min(llm.max_retries, 2)  # stay inside the serverless time limit
         try:
             inv = _validate(_json_from(llm.complete(INVESTIGATE_PROMPT, user)), set(records), records)
             llm_used = True
@@ -396,7 +400,7 @@ def transition(token: str, op: str, checks: list[dict] | None = None) -> dict:
         passed = all(bool(c.get("passed")) for c in checks)
         state["status"] = "verified_passed" if passed else "verified_failed"
         state["checks"] = [{"check": str(c["check"])[:200], "passed": bool(c.get("passed"))} for c in checks][:8]
-        result = {"verification": state["checks"], "verification_basis": "operator-confirmed checks in a simulated environment"}
+        result = {"verification_checks": state["checks"], "verification_basis": "operator-confirmed checks in a simulated environment"}
     else:
         raise ValueError(f"Unknown operation '{op}'.")
     state["history"] = (state.get("history") or [])[-8:] + [{"op": op, "at": now}]

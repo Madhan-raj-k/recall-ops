@@ -175,3 +175,15 @@ def test_failed_retain_not_reported_as_success():
     r = wf.retain_postmortem(ExplodingMemory(), inc)
     assert r["retained"] is False and "FAILED" in r["message"] and r["error"]
     assert inc.incident_id not in wf._RETAINED
+
+
+class DownMemory(InMemoryIncidentMemory):
+    def recall_similar(self, query, max_tokens=2048):
+        raise MemoryError_("hindsight unreachable")
+
+
+def test_hindsight_down_is_reported_not_hidden():
+    out = wf.investigate(ALERT, DownMemory(), None, use_memory=True)
+    assert out["memory_recall_called"] and out["historical_incidents"] == []
+    assert any("recall failed" in w for w in out["warnings"])
+    assert out["investigation"]["supporting_evidence"] == []

@@ -23,6 +23,19 @@ and it will happily suggest the exact fix that wasted 20 minutes last month (e.g
 for a connection-pool bug). The knowledge exists — it just isn't *remembered* at the moment it matters.
 
 
+## Evidence-driven incident workflow (jury build)
+
+The **Incident workflow** section runs the full lifecycle on real application operations:
+
+1. **Investigate, Memory OFF vs ON** (`POST /api/workflow/compare`): the identical input is investigated twice. OFF never builds a memory client; ON calls Hindsight `recall`. A side-by-side table compares investigation, historical evidence, recommended fix and previous-failure awareness. Each investigation lists summary, service, symptoms, potential root causes (tagged *evidence* or *assumption*), supporting evidence, missing information, retrieved incidents and next steps.
+2. **Similar incidents**: up to 3 distinct incidents grouped from recall results, with the raw retrieved facts inspectable. Scores are shown only when the memory backend returned one.
+3. **Evidence-backed remediation**: each action has explanation, why, incident reference, previous fix, historical outcome, risk, expected result, verification and rollback. References not returned by recall are stripped server-side and the action is labelled *general diagnostic suggestion*. The model cannot downgrade the risk of disruptive actions (rollback, restart, delete…).
+4. **Approval → simulation → verification** (`POST /api/workflow/action`): HMAC-signed action tokens enforce *Awaiting approval → Approved/Rejected → Simulated execution completed → Verification passed/failed*. Rejected actions cannot run, and approval never marks an incident resolved. Simulation responses carry `real_infrastructure_changed: false`.
+5. **Postmortem → retain** (`POST /api/workflow/postmortem`): requires at least one verified action. The incident ID is a content hash (`INC-PM-xxxxxxxx`), so identical postmortems are written once. Success is shown only if the Hindsight write succeeded.
+6. **Learning check** (`POST /api/workflow/recall-check` + `/api/workflow/investigate`): a related incident is investigated again, and real recall is checked for the retained postmortem's ID.
+
+`RECALLOPS_SIGNING_KEY` (optional) sets the action-token HMAC key; otherwise it's derived from the server-side API key.
+
 ## Live agent loop (finale demo)
 
 The **Live agent** section on the web app runs the full loop end to end:

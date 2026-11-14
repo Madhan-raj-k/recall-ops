@@ -278,7 +278,7 @@ new IntersectionObserver((ents, obs) => { if (ents.some((e) => e.isIntersecting)
       </div>
       ${a.recorded_remediation ? `<details><summary>Stored record for ${esc(a.incident_id)}</summary><div class="wf-log">Fix that worked: ${esc(a.recorded_remediation)}${a.recorded_failed_attempts ? `\nDid NOT work: ${esc(a.recorded_failed_attempts)}` : ""}</div></details>` : ""}
       ${st.log ? `<div class="wf-log">${st.log.map(esc).join("\n")}\nreal_infrastructure_changed: false</div>` : ""}
-      ${st.verification ? `<div class="wf-log">${st.verification.map((c) => `${c.passed ? "✓" : "✗"} ${esc(c.check)}`).join("\n")}\n(${esc(st.verification_basis)})</div>` : ""}
+      ${st.verification_checks ? `<div class="wf-log">${st.verification_checks.map((c) => `${c.passed ? "✓" : "✗"} ${esc(c.check)}`).join("\n")}\n(${esc(st.verification_basis)})</div>` : ""}
       ${st.error ? errBox(st.error) : ""}
       <div class="flex flex-wrap items-center gap-3 mt-3">${btns}</div></div>`;
   }
