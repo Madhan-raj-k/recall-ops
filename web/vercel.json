@@ -2,7 +2,7 @@
   "functions": {
     "api/index.py": {
       "maxDuration": 60,
-      "includeFiles": "{agent,memory,llm,models,config,incidents_data,demo_agent}.py"
+      "includeFiles": "{agent,memory,llm,models,config,incidents_data,demo_agent,workflow}.py"
     }
   },
   "rewrites": [

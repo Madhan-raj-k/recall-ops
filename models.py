@@ -22,6 +22,10 @@ class Incident:
     runbook: str = ""
     time_to_resolve_min: int | None = None
     synthetic: bool = False
+    lessons: str = ""
+    prevention: str = ""
+    simulated_resolution: bool = False
+    test_record: bool = False
 
     def to_memory_text(self) -> str:
         """Render the postmortem as a narrative Hindsight can extract facts from."""
@@ -39,8 +43,16 @@ class Incident:
             lines.append(f"Runbook used: {self.runbook}.")
         if self.time_to_resolve_min is not None:
             lines.append(f"Time to resolve: {self.time_to_resolve_min} minutes.")
+        if self.lessons:
+            lines.append(f"Lessons learned: {self.lessons}")
+        if self.prevention:
+            lines.append(f"Prevention: {self.prevention}")
+        if self.simulated_resolution:
+            lines.append("Resolution was executed in SIMULATION (no real infrastructure changed) and verified by the operator.")
         if self.synthetic:
             lines.append("(Synthetic demo data.)")
+        if self.test_record:
+            lines.append("(Test record written during RecallOps verification.)")
         return "\n".join(lines)
 
     def tags(self) -> list[str]:
@@ -48,6 +60,10 @@ class Incident:
         tags += [f"team:{t}" for t in self.teams]
         if self.synthetic:
             tags.append("synthetic")
+        if self.simulated_resolution:
+            tags.append("kind:agent-postmortem")
+        if self.test_record:
+            tags.append("test")
         return tags
 
     def metadata(self) -> dict[str, str]:

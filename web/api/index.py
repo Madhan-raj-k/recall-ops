@@ -30,6 +30,7 @@ from incidents_data import DEMO_ALERTS  # noqa: E402
 from llm import build_llm  # noqa: E402
 from memory import HindsightIncidentMemory, InMemoryIncidentMemory, MemoryError_, build_memory  # noqa: E402
 from incidents_data import seed_incidents  # noqa: E402
+import workflow as wf  # noqa: E402
 from demo_agent import SAMPLE_ALERTS, learn as agent_learn, parse_webhook, run_agent  # noqa: E402
 
 app = FastAPI(title="RecallOps API", docs_url="/api/docs", openapi_url="/api/openapi.json")
@@ -38,7 +39,7 @@ settings = load_settings()
 MAX_ALERT = 500
 MAX_FIELD = 1200
 # Best-effort per-IP limits (per warm instance). Public demo running on the owner's keys.
-LIMITS = {"triage": (12, 600), "resolve": (4, 600), "explore": (20, 600), "learning": (10, 600), "agent": (30, 600)}
+LIMITS = {"triage": (12, 600), "resolve": (4, 600), "explore": (20, 600), "learning": (10, 600), "agent": (30, 600), "investigate": (20, 600), "action": (60, 600), "retain": (4, 600)}
 _hits: dict[tuple[str, str], deque] = defaultdict(deque)
 _lock = threading.Lock()
 
@@ -334,6 +335,116 @@ def agent_learn_ep(body: AgentLearnIn, request: Request):
         return agent_learn(mem, **body.model_dump())
     except ValueError as exc:
         raise HTTPException(422, str(exc)) from exc
+    finally:
+        mem.close()
+
+
+# ---------- Evidence-driven workflow: investigate -> approve -> simulate -> verify -> retain -> recall ----------
+def _backend() -> str:
+    return "hindsight" if settings.hindsight_ready else "offline (in-memory demo store)"
+
+
+class InvestigateIn(BaseModel):
+    alert: str = Field(..., max_length=MAX_ALERT * 2)
+    use_memory: bool = True
+
+
+def _investigate(alert: str, use_memory: bool) -> dict:
+    mem = _memory() if use_memory else None  # Memory OFF never builds a memory client
+    try:
+        out = wf.investigate(alert, mem, build_llm(settings), use_memory=use_memory)
+        out["memory_backend"] = _backend() if use_memory else "none (Memory OFF)"
+        return out
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    finally:
+        if mem is not None:
+            mem.close()
+
+
+@app.post("/api/workflow/investigate")
+def wf_investigate(body: InvestigateIn, request: Request):
+    _rate_limit(request, "investigate")
+    alert = _clean(body.alert, MAX_ALERT)
+    if not alert:
+        raise HTTPException(422, "Incident description is empty.")
+    return _investigate(alert, body.use_memory)
+
+
+@app.post("/api/workflow/compare")
+def wf_compare(body: InvestigateIn, request: Request):
+    """Run Memory OFF and Memory ON on exactly the same input."""
+    _rate_limit(request, "investigate")
+    alert = _clean(body.alert, MAX_ALERT)
+    if not alert:
+        raise HTTPException(422, "Incident description is empty.")
+    off = _investigate(alert, False)
+    on = _investigate(alert, True)
+    return {"alert": alert, "same_input": off["alert"] == on["alert"] == alert, "off": off, "on": on,
+            "table": wf.compare_rows(off, on)}
+
+
+class ActionIn(BaseModel):
+    token: str = Field(..., max_length=4000)
+    op: str = Field(..., pattern="^(approve|reject|simulate|verify)$")
+    checks: list[dict] = Field(default_factory=list, max_length=8)
+
+
+@app.post("/api/workflow/action")
+def wf_action(body: ActionIn, request: Request):
+    _rate_limit(request, "action")
+    try:
+        return wf.transition(body.token, body.op, body.checks)
+    except ValueError as exc:
+        raise HTTPException(409, str(exc)) from exc
+
+
+class PostmortemReq(BaseModel):
+    alert: str = Field(..., max_length=MAX_ALERT)
+    title: str = Field(..., max_length=120)
+    service: str = Field(..., max_length=80)
+    severity: str = Field("SEV2", pattern="^SEV[1-4]$")
+    root_cause: str = Field(..., max_length=MAX_FIELD)
+    lessons: str = Field("", max_length=800)
+    prevention: str = Field("", max_length=800)
+    action_tokens: list[str] = Field(..., min_length=1, max_length=8)
+    retain: bool = False
+    test: bool = False
+
+
+@app.post("/api/workflow/postmortem")
+def wf_postmortem(body: PostmortemReq, request: Request):
+    """Build the postmortem (preview); with retain=true also write it to memory (once per content hash)."""
+    _rate_limit(request, "retain" if body.retain else "action")
+    pm = wf.PostmortemIn(alert=body.alert, title=body.title, service=body.service, severity=body.severity,
+                         root_cause=body.root_cause, lessons=body.lessons, prevention=body.prevention, test=body.test)
+    try:
+        inc, doc = wf.build_postmortem(pm, body.action_tokens)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    out = {"incident_id": inc.incident_id, "postmortem": doc, "memory_backend": _backend()}
+    if body.retain:
+        mem = _memory()
+        try:
+            out["retention"] = wf.retain_postmortem(mem, inc)
+        finally:
+            mem.close()
+    return out
+
+
+class RecallCheckIn(BaseModel):
+    alert: str = Field(..., max_length=MAX_ALERT)
+    incident_id: str = Field(..., pattern="^INC-[A-Z0-9-]{3,40}$")
+
+
+@app.post("/api/workflow/recall-check")
+def wf_recall_check(body: RecallCheckIn, request: Request):
+    _rate_limit(request, "investigate")
+    mem = _memory()
+    try:
+        out = wf.check_recall(mem, _clean(body.alert, MAX_ALERT), body.incident_id)
+        out["memory_backend"] = _backend()
+        return out
     finally:
         mem.close()
 
