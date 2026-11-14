@@ -134,7 +134,9 @@ def _group_matches(memories, learned: dict[str, dict], limit: int = 3) -> list[d
     cat = _catalog()
     cat.update(learned)
     seen: dict[str, dict] = {}
-    for m in memories:
+    # Consolidated observations have no source incident; show them only if nothing else matched.
+    sourced = [m for m in memories if m.document_id]
+    for m in sourced or memories:
         src = m.document_id or "memory"
         if src not in seen:
             info = dict(cat.get(src) or {"id": src, "title": m.text.splitlines()[0][:120]})
