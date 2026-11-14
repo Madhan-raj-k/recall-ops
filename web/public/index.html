@@ -3,59 +3,46 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>RecallOps · the on-call agent that never forgets</title>
+<title>RecallOps · Incident response console</title>
 <meta name="description" content="RecallOps dives into your incident memory with Hindsight agent memory: recall past outages, reflect like a senior SRE, and get a ranked triage plan. Memory OFF vs ON, side by side." />
-<meta name="theme-color" content="#040404" />
+<meta name="theme-color" content="#0b0b0c" />
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Ccircle cx=%2216%22 cy=%2216%22 r=%227%22 fill=%22%23e5e5e5%22/%3E%3Ccircle cx=%2216%22 cy=%2216%22 r=%2213%22 fill=%22none%22 stroke=%22%23e5e5e5%22 stroke-opacity=%22.4%22 stroke-width=%222%22/%3E%3C/svg%3E" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
 <script src="https://cdn.tailwindcss.com"></script>
-<script>tailwind.config={theme:{extend:{fontFamily:{sans:['"Space Grotesk"','system-ui','sans-serif'],mono:['"JetBrains Mono"','ui-monospace','monospace']}}}}</script>
+<script>tailwind.config={theme:{extend:{fontFamily:{sans:['Inter','system-ui','sans-serif'],mono:['"JetBrains Mono"','ui-monospace','monospace']}}}}</script>
 <script src="https://cdn.jsdelivr.net/npm/marked@12/marked.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/lenis@1.1.13/dist/lenis.min.js"></script>
 <link rel="stylesheet" href="/styles.css" />
 </head>
 <body class="font-sans antialiased">
-<canvas id="abyss" aria-hidden="true"></canvas>
-<div id="abyssFallback" aria-hidden="true"></div>
-<div class="veil" aria-hidden="true"></div>
-
-<!-- HUD -->
-<header class="hud-top">
-  <a href="#top" class="brand"><span class="brand-dot"></span>RecallOps</a>
-  <nav class="hidden md:flex gap-6 text-[13px] text-neutral-400">
-    <a href="#agent">Incident workflow</a><a href="#triage">Triage</a><a href="#learning">Learning curve</a><a href="#resolve">Retain</a><a href="#explorer">Memory</a><a href="#how">How it works</a>
-  </nav>
-  <a href="https://github.com/Madhan-raj-k/recall-ops" class="btn-ghost text-[13px]">GitHub ↗</a>
+<div class="app">
+<aside class="sidebar" id="sidebar">
+  <a href="#triage" class="brand"><span class="brand-mark"><svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="6" fill="currentColor"/><circle cx="16" cy="16" r="12" fill="none" stroke="currentColor" stroke-opacity=".45" stroke-width="2"/></svg></span>RecallOps</a>
+  <div class="nav-label">Workspace</div>
+  <nav class="nav"><a href="#triage" class="nav-item" data-view="triage"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg><span>Live triage</span></a><a href="#agent" class="nav-item" data-view="agent"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg><span>Incident workflow</span></a><a href="#learning" class="nav-item" data-view="learning"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"/></svg><span>Learning curve</span></a><a href="#resolve" class="nav-item" data-view="resolve"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0-4-4m4 4 4-4M4 21h16"/></svg><span>Retain</span></a><a href="#explorer" class="nav-item" data-view="explorer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6c0-1.7 3.6-3 8-3s8 1.3 8 3-3.6 3-8 3-8-1.3-8-3zm0 0v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg><span>Memory</span></a><a href="#how" class="nav-item" data-view="how"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zm0-6v.01M12 8a2 2 0 0 1 1 3.7c-.6.4-1 .9-1 1.6"/></svg><span>How it works</span></a></nav>
+  <div class="sidebar-foot">
+    <div class="org"><span class="org-av">SN</span><div><div class="org-n">ShopNova</div><div class="org-s">On-call · demo org</div></div></div>
+    <a href="https://github.com/Madhan-raj-k/recall-ops" class="side-link" target="_blank" rel="noopener">GitHub repo ↗</a>
+    <a href="https://hindsight.vectorize.io/" class="side-link" target="_blank" rel="noopener">Hindsight docs ↗</a>
+  </div>
+</aside>
+<div class="scrim" id="scrim"></div>
+<div class="main">
+<header class="topbar">
+  <button class="menu-btn" id="menuBtn" aria-label="Open navigation"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+  <div class="crumbs"><span class="crumb-muted">ShopNova</span><span class="crumb-sep">/</span><span id="pageTitle">Live triage</span></div>
+  <div class="top-right">
+    <span class="env-pill">Production · synthetic data</span>
+    <span class="status-pill" id="hsStatus"><span class="dot"></span><span id="hsText">Checking Hindsight…</span></span>
+  </div>
 </header>
-
-<main id="top">
-<!-- HERO -->
-<section class="hero">
-  <p class="eyebrow reveal">Incident response · powered by Hindsight agent memory</p>
-  <h1 class="hero-title"><span class="line">Your on-call agent</span><span class="line glow-text">that never forgets.</span></h1>
-  <div class="flex flex-wrap gap-3 mt-9 reveal">
-    <a href="#agent" class="btn-primary">Run the incident workflow ↓</a>
-    <a href="#triage" class="btn-ghost">Memory OFF vs ON</a>
-    <a href="#learning" class="btn-ghost">Watch it learn</a>
-  </div>
-  <div class="hero-meta reveal">
-    <div><b>18</b><span>past incidents in memory</span></div>
-    <div><b>3</b><span>Hindsight calls: retain · recall · reflect</span></div>
-    <div><b>1</b><span>postmortem to change the answer</span></div>
-  </div>
-  <div class="scroll-hint" aria-hidden="true"><span></span>scroll to descend</div>
-</section>
+<main class="content" id="top">
 
 <!-- LIVE AGENT -->
-<section id="agent" class="sect">
-  <div class="kicker">incident workflow</div>
-  <h2 class="h2 reveal">Retain → Recall → Investigate → Recommend → Approve → Verify → Learn.</h2>
-  <p class="lead reveal">Submit an incident. The same input is investigated with Memory OFF and Memory ON. Approve a remediation, run it in <b>simulation</b>, verify it, and retain the postmortem to Hindsight. Then submit a related incident and check that memory brings the lesson back.</p>
+<section id="agent" class="view" hidden>
+  <div class="page-h"><h1 class="page-title">Incident workflow</h1><p class="page-desc">Investigate an incident with Memory OFF vs ON, approve a simulated remediation, verify it, and retain the postmortem to Hindsight.</p></div>
   <div class="wf-disclosure mt-6">Demo data: <b>ShopNova is a fictional company</b> and every incident record is synthetic. Remediation is <b>simulated only</b>: nothing is ever executed against real infrastructure.</div>
   <ol id="wfStepper" class="wf-stepper mt-6"></ol>
 
@@ -67,7 +54,7 @@
     <label for="wfAlert" class="sr-only">Incident description</label>
     <textarea id="wfAlert" maxlength="500" rows="2" class="field mt-3" placeholder="Describe the incident, e.g. API latency spike on payments-api, p95 4.8s, DB pool wait rising"></textarea>
     <div class="flex flex-wrap items-center gap-3 mt-3">
-      <button id="wfRun" class="btn-primary">① Investigate: Memory OFF vs ON</button>
+      <button id="wfRun" class="btn-primary">Investigate (Memory OFF vs ON)</button>
       <button id="wfReset" class="btn-ghost sm">Reset workflow</button>
       <span id="wfStatus" class="text-xs font-mono text-neutral-400"></span>
     </div>
@@ -121,16 +108,14 @@
 </section>
 
 <!-- TRIAGE -->
-<section id="triage" class="sect">
-  <div class="kicker">live triage</div>
-  <h2 class="h2 reveal">Same alert. Same model. One has memory.</h2>
-  <p class="lead reveal">Pick an alert. The left agent answers from nothing. The right one calls Hindsight <code>recall</code> + <code>reflect</code> over ShopNova's incident history (synthetic) before planning.</p>
-  <div class="glass p-5 md:p-6 mt-8 reveal">
+<section id="triage" class="view" hidden>
+  <div class="page-h"><h1 class="page-title">Live triage</h1><p class="page-desc">Pick an alert. The left agent answers from nothing. The right one calls Hindsight <code>recall</code> + <code>reflect</code> over ShopNova's incident history (synthetic) before planning.</p></div>
+  <div class="glass p-5 md:p-6 mt-5">
     <div id="examples" class="flex flex-wrap gap-2"></div>
     <label for="alert" class="sr-only">Alert text</label>
     <textarea id="alert" maxlength="500" rows="2" class="field mt-4" placeholder="Paste an alert, e.g. PagerDuty SEV1: payments-api 5xx…"></textarea>
     <div class="flex flex-wrap items-center gap-4 mt-3">
-      <button id="runTriage" class="btn-primary">Dive & triage</button>
+      <button id="runTriage" class="btn-primary">Run triage</button>
       <label class="text-sm flex items-center gap-2 text-neutral-400"><input type="checkbox" id="useReflect" checked class="accent-neutral-300"> include Hindsight reflect</label>
       <span id="alertCount" class="ml-auto text-xs font-mono text-neutral-500">0/500</span>
     </div>
@@ -147,8 +132,8 @@
   </div>
   <div class="grid lg:grid-cols-5 gap-5 mt-5">
     <div class="glass p-5 lg:col-span-3">
-      <div class="flex items-baseline gap-3"><h3 class="h3">Recalled from the deep</h3><span id="recallCount" class="font-mono text-xs text-neutral-200/80"></span></div>
-      <div id="nodes" class="nodes"><span class="muted text-sm">Glowing nodes appear here: one per past incident Hindsight surfaces.</span></div>
+      <div class="flex items-baseline gap-3"><h3 class="h3">Recalled incidents</h3><span id="recallCount" class="font-mono text-xs text-neutral-200/80"></span></div>
+      <div id="nodes" class="nodes"><span class="muted text-sm">Past incidents surfaced by Hindsight will appear here.</span></div>
       <ul id="recalled" class="mem-list"></ul>
     </div>
     <div class="glass p-5 lg:col-span-2">
@@ -159,11 +144,9 @@
 </section>
 
 <!-- LEARNING -->
-<section id="learning" class="sect">
-  <div class="kicker">learning curve</div>
-  <h2 class="h2 reveal">Dive deeper: watch it get smarter.</h2>
-  <p class="lead reveal">You get a private, empty memory bank. Interaction 1 knows nothing. Retain one postmortem, ask the same question, and the plan goes from guesswork to specific.</p>
-  <div class="glass p-5 md:p-6 mt-8 reveal">
+<section id="learning" class="view" hidden>
+  <div class="page-h"><h1 class="page-title">Learning curve</h1><p class="page-desc">You get a private, empty memory bank. Interaction 1 knows nothing. Retain one postmortem, ask the same question, and the plan goes from guesswork to specific.</p></div>
+  <div class="glass p-5 md:p-6 mt-5">
     <div class="font-mono text-[11px] tracking-widest text-neutral-200/70">SCENARIO ALERT</div>
     <div id="lcAlert" class="mt-2 text-neutral-100 font-mono text-sm leading-relaxed"></div>
     <ol class="steps mt-6">
@@ -180,32 +163,28 @@
 </section>
 
 <!-- RESOLVE -->
-<section id="resolve" class="sect">
-  <div class="kicker">retain</div>
-  <h2 class="h2 reveal">Every resolved incident sinks into memory.</h2>
-  <p class="lead reveal">Write down what fixed it and what didn't. It is retained into the shared ShopNova bank with its timestamp, service and team tags, and the next similar alert benefits.</p>
-  <form id="resForm" class="glass p-5 md:p-6 mt-8 grid md:grid-cols-6 gap-3 text-sm reveal">
-    <input name="title" required maxlength="120" placeholder="Title *  e.g. Checkout 503s after CDN config push" class="field md:col-span-3" aria-label="Title" value="Checkout 503s after CDN config push" />
-    <input name="service" required maxlength="60" placeholder="Service *  e.g. checkout-web" class="field md:col-span-2" aria-label="Service" value="checkout-web" />
-    <select name="severity" class="field" aria-label="Severity"><option selected>SEV1</option><option>SEV2</option><option>SEV3</option><option>SEV4</option></select>
-    <textarea name="symptoms" maxlength="1200" rows="2" placeholder="Symptoms / alerts" class="field md:col-span-6" aria-label="Symptoms">PagerDuty SEV1: checkout-web 503 rate jumped from 0.2% to 38% within 4 minutes of a CDN config deploy. Cart page loads, but Place Order times out for users in the South region.</textarea>
-    <textarea name="root_cause" required maxlength="1200" rows="2" placeholder="Root cause *" class="field md:col-span-3" aria-label="Root cause">The new CDN rule cached POST /checkout responses and stripped the session cookie, so origin rejected orders as unauthenticated.</textarea>
-    <textarea name="what_worked" required maxlength="1200" rows="2" placeholder="What fixed it *" class="field md:col-span-3" aria-label="What fixed it">Rolled back the CDN config to the previous version and purged the /checkout/* cache path. Errors dropped to normal in 3 minutes. Added a CI check that blocks caching on POST routes.</textarea>
-    <textarea name="what_failed" maxlength="1200" rows="2" placeholder="What did NOT work (the most valuable memory)" class="field md:col-span-6" aria-label="What did not work">Restarting checkout-web pods and scaling them from 6 to 12 did nothing and wasted 25 minutes, because the app servers were healthy and the problem was at the CDN.</textarea>
-    <input name="teams" maxlength="120" placeholder="Teams, comma separated" class="field md:col-span-2" aria-label="Teams" value="payments, platform-sre" />
-    <input name="runbook" maxlength="120" placeholder="Runbook" class="field md:col-span-2" aria-label="Runbook" value="RB-CDN-ROLLBACK" />
-    <input name="time_to_resolve_min" type="number" min="0" max="10000" placeholder="Minutes" class="field" aria-label="Minutes to resolve" value="42" />
-    <button id="resBtn" class="btn-primary">Retain ↓</button>
+<section id="resolve" class="view" hidden>
+  <div class="page-h"><h1 class="page-title">Retain postmortem</h1><p class="page-desc">Write down what fixed it and what didn't. It is retained into the shared ShopNova bank with its timestamp, service and team tags, and the next similar alert benefits.</p></div>
+  <form id="resForm" class="glass p-5 md:p-6 mt-5 grid md:grid-cols-6 gap-4 text-sm">
+    <label class="md:col-span-3"><span class="form-label">Title *</span><input name="title" required maxlength="120" placeholder="Title *  e.g. Checkout 503s after CDN config push" class="field" aria-label="Title" value="Checkout 503s after CDN config push" /></label>
+    <label class="md:col-span-2"><span class="form-label">Service *</span><input name="service" required maxlength="60" placeholder="Service *  e.g. checkout-web" class="field" aria-label="Service" value="checkout-web" /></label>
+    <label class=""><span class="form-label">Severity</span><select name="severity" class="field" aria-label="Severity"><option selected>SEV1</option><option>SEV2</option><option>SEV3</option><option>SEV4</option></select></label>
+    <label class="md:col-span-6"><span class="form-label">Symptoms / alerts</span><textarea name="symptoms" maxlength="1200" rows="2" placeholder="Symptoms / alerts" class="field" aria-label="Symptoms">PagerDuty SEV1: checkout-web 503 rate jumped from 0.2% to 38% within 4 minutes of a CDN config deploy. Cart page loads, but Place Order times out for users in the South region.</textarea></label>
+    <label class="md:col-span-3"><span class="form-label">Root cause *</span><textarea name="root_cause" required maxlength="1200" rows="2" placeholder="Root cause *" class="field" aria-label="Root cause">The new CDN rule cached POST /checkout responses and stripped the session cookie, so origin rejected orders as unauthenticated.</textarea></label>
+    <label class="md:col-span-3"><span class="form-label">What fixed it *</span><textarea name="what_worked" required maxlength="1200" rows="2" placeholder="What fixed it *" class="field" aria-label="What fixed it">Rolled back the CDN config to the previous version and purged the /checkout/* cache path. Errors dropped to normal in 3 minutes. Added a CI check that blocks caching on POST routes.</textarea></label>
+    <label class="md:col-span-6"><span class="form-label">What did NOT work</span><textarea name="what_failed" maxlength="1200" rows="2" placeholder="What did NOT work (the most valuable memory)" class="field" aria-label="What did not work">Restarting checkout-web pods and scaling them from 6 to 12 did nothing and wasted 25 minutes, because the app servers were healthy and the problem was at the CDN.</textarea></label>
+    <label class="md:col-span-2"><span class="form-label">Teams</span><input name="teams" maxlength="120" placeholder="Teams, comma separated" class="field" aria-label="Teams" value="payments, platform-sre" /></label>
+    <label class="md:col-span-2"><span class="form-label">Runbook</span><input name="runbook" maxlength="120" placeholder="Runbook" class="field" aria-label="Runbook" value="RB-CDN-ROLLBACK" /></label>
+    <label class=""><span class="form-label">Minutes to resolve</span><input name="time_to_resolve_min" type="number" min="0" max="10000" placeholder="Minutes" class="field" aria-label="Minutes to resolve" value="42" /></label>
+    <button id="resBtn" class="btn-primary self-end">Retain to memory</button>
     <div id="resOut" class="md:col-span-6"></div>
   </form>
 </section>
 
 <!-- EXPLORER -->
-<section id="explorer" class="sect">
-  <div class="kicker">the memory floor</div>
-  <h2 class="h2 reveal">What the agent actually remembers.</h2>
-  <p class="lead reveal">Facts and consolidated observations that Hindsight extracted from postmortems, laid out on a timeline. Ask it anything.</p>
-  <div class="glass p-5 md:p-6 mt-8 reveal">
+<section id="explorer" class="view" hidden>
+  <div class="page-h"><h1 class="page-title">Memory explorer</h1><p class="page-desc">Facts and consolidated observations that Hindsight extracted from postmortems, laid out on a timeline. Ask it anything.</p></div>
+  <div class="glass p-5 md:p-6 mt-5">
     <div class="flex flex-col sm:flex-row gap-3">
       <input id="exQ" maxlength="300" class="field flex-1" placeholder="e.g. What fixed Redis eviction before?  (empty = latest memories)" aria-label="Memory search" />
       <button id="exBtn" class="btn-ghost">Search memory</button>
@@ -215,21 +194,20 @@
 </section>
 
 <!-- HOW -->
-<section id="how" class="sect">
-  <div class="kicker">how it works</div>
-  <h2 class="h2 reveal">Three calls. One memory bank.</h2>
-  <div class="glass p-5 md:p-8 mt-8 reveal">
+<section id="how" class="view" hidden>
+  <div class="page-h"><h1 class="page-title">How it works</h1><p class="page-desc">RecallOps uses three Hindsight calls against one memory bank: retain, recall and reflect.</p></div>
+  <div class="glass p-5 md:p-6 mt-5">
     <svg viewBox="0 0 900 260" class="w-full h-auto" role="img" aria-label="Diagram: postmortems are retained into the Hindsight bank; alerts recall and reflect from it to produce a plan">
       <defs>
         <linearGradient id="g1" x1="0" x2="1"><stop offset="0" stop-color="#d6d6d6"/><stop offset="1" stop-color="#bbbbbb"/></linearGradient>
-        <filter id="glow"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        
       </defs>
       <path class="flow" d="M156 70 C 290 70, 320 130, 388 130" />
       <path class="flow" d="M156 190 C 290 190, 320 130, 388 130" />
       <path class="flow" d="M512 130 L 728 130" style="stroke:#cfcfcf" />
       <g class="dnode"><circle cx="105" cy="70" r="50"/><text x="105" y="75">postmortem</text></g>
       <g class="dnode"><circle cx="105" cy="190" r="50"/><text x="105" y="195">alert</text></g>
-      <g class="dnode big"><circle cx="450" cy="130" r="62" filter="url(#glow)"/><text x="450" y="125">Hindsight</text><text x="450" y="145" class="small">memory bank</text></g>
+      <g class="dnode big"><circle cx="450" cy="130" r="62"/><text x="450" y="125">Hindsight</text><text x="450" y="145" class="small">memory bank</text></g>
       <g class="dnode"><circle cx="785" cy="130" r="56"/><text x="785" y="126">ranked</text><text x="785" y="143">plan</text></g>
       <text x="270" y="50" class="lbl" text-anchor="middle">retain()</text><text x="270" y="232" class="lbl" text-anchor="middle">recall() + reflect()</text><text x="615" y="114" class="lbl" text-anchor="middle">context → LLM</text>
     </svg>
@@ -241,19 +219,10 @@
   </div>
 </section>
 </main>
+<footer class="app-foot">All incident data is synthetic (fictional company ShopNova). Remediation is simulated. Public demo: rate-limited; calls hit Hindsight Cloud + Groq and take ~5–20 s.</footer>
+</div>
+</div>
 
-<footer class="foot">
-  <div class="max-w-6xl mx-auto px-6 py-10 flex flex-wrap gap-x-7 gap-y-3 text-sm text-neutral-400">
-    <span class="text-neutral-200">RecallOps · MIT</span>
-    <a href="https://github.com/Madhan-raj-k/recall-ops">Project repo</a>
-    <a href="https://github.com/vectorize-io/hindsight">Hindsight on GitHub</a>
-    <a href="https://hindsight.vectorize.io/">Hindsight docs</a>
-    <a href="https://vectorize.io/what-is-agent-memory">What is agent memory?</a>
-    <span class="w-full text-xs text-neutral-500">All incident data is synthetic (fictional company ShopNova). Public demo: rate-limited, inputs length-capped. Calls hit real Hindsight Cloud + Groq and take ~5–20 s.</span>
-  </div>
-</footer>
-
-<script type="module" src="/scene.js"></script>
 <script src="/app.js"></script>
 </body>
 </html>

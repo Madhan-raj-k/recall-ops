@@ -1,37 +1,38 @@
-/* RecallOps frontend: API wiring + motion (GSAP/ScrollTrigger/Lenis). */
+/* RecallOps frontend: app shell router + API wiring. */
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const md = (s) => DOMPurify.sanitize(marked.parse(s || ""));
 const REDUCE = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-const HAS_GSAP = typeof window.gsap !== "undefined";
+const HAS_GSAP = false;
 
-// ---------- smooth scroll + reveals ----------
-let lenis = null;
-if (HAS_GSAP) gsap.registerPlugin(ScrollTrigger);
-if (!REDUCE && typeof window.Lenis !== "undefined") {
-  lenis = new Lenis({ lerp: 0.09, smoothWheel: true });
-  if (HAS_GSAP) { lenis.on("scroll", ScrollTrigger.update); gsap.ticker.add((t) => lenis.raf(t * 1000)); gsap.ticker.lagSmoothing(0); }
-  else { const raf = (t) => { lenis.raf(t); requestAnimationFrame(raf); }; requestAnimationFrame(raf); }
-  document.querySelectorAll('a[href^="#"]').forEach((a) => a.addEventListener("click", (e) => {
-    const el = document.querySelector(a.getAttribute("href")); if (el) { e.preventDefault(); lenis.scrollTo(el, { offset: -60 }); }
-  }));
+// ---------- app shell: hash router + status ----------
+const VIEWS = { agent: "Incident workflow", triage: "Live triage", learning: "Learning curve", resolve: "Retain postmortem", explorer: "Memory explorer", how: "How it works" };
+function showView() {
+  let v = (location.hash || "").replace("#", "");
+  if (!VIEWS[v]) v = "triage";
+  document.querySelectorAll("section.view").forEach((s) => (s.hidden = s.id !== v));
+  document.querySelectorAll(".nav-item").forEach((a) => a.classList.toggle("active", a.dataset.view === v));
+  const t = document.getElementById("pageTitle"); if (t) t.textContent = VIEWS[v];
+  document.title = `${VIEWS[v]} · RecallOps`;
+  document.body.classList.remove("nav-open");
+  const c = document.querySelector(".content"); if (c) c.scrollTop = 0; window.scrollTo(0, 0);
 }
-if (HAS_GSAP && !REDUCE) {
-  gsap.from(".hero-title .line", { yPercent: 110, opacity: 0, duration: 1.2, ease: "expo.out", stagger: 0.12, delay: 0.15 });
-  gsap.utils.toArray(".reveal").forEach((el) => {
-    gsap.from(el, { y: 36, opacity: 0, duration: 1, ease: "power3.out", scrollTrigger: { trigger: el, start: "top 88%" } });
-  });
-  gsap.utils.toArray(".kicker").forEach((el) => gsap.from(el, { opacity: 0, x: -20, duration: 0.8, scrollTrigger: { trigger: el, start: "top 90%" } }));
-  gsap.from(".dnode", { scale: 0.4, opacity: 0, transformOrigin: "center", duration: 0.9, ease: "back.out(1.7)", stagger: 0.12, scrollTrigger: { trigger: "#how svg", start: "top 80%" } });
-}
-
-// ---------- scroll depth (drives the background veil only) ----------
-function onScroll() {
-  const max = document.documentElement.scrollHeight - window.innerHeight;
-  const f = max > 0 ? Math.min(1, Math.max(0, window.scrollY / max)) : 0;
-  document.documentElement.style.setProperty("--depth", f.toFixed(3));
-}
-window.addEventListener("scroll", onScroll, { passive: true }); onScroll();
+window.addEventListener("hashchange", showView); showView();
+// loading state on action buttons while their request is in flight
+["runTriage", "resBtn", "wfRun", "pmRetain", "wfLearnRun", "lc1", "lc3"].forEach((id) => {
+  const b = document.getElementById(id); if (!b) return;
+  let armed = false;
+  b.addEventListener("click", () => { armed = true; });
+  new MutationObserver(() => { if (b.disabled && armed) b.classList.add("loading"); else { b.classList.remove("loading"); if (!b.disabled) armed = false; } }).observe(b, { attributes: true, attributeFilter: ["disabled"] });
+});
+document.getElementById("menuBtn")?.addEventListener("click", () => document.body.classList.toggle("nav-open"));
+document.getElementById("scrim")?.addEventListener("click", () => document.body.classList.remove("nav-open"));
+fetch("/api/health").then((r) => r.json()).then((h) => {
+  const ok = h && h.memory && !/off|none|fallback|unavail/i.test(String(h.memory));
+  const pill = document.getElementById("hsStatus");
+  pill.classList.add(ok ? "ok" : "warn");
+  document.getElementById("hsText").textContent = ok ? "Hindsight connected" : `Memory: ${h.memory || "offline"}`;
+}).catch(() => { document.getElementById("hsStatus").classList.add("warn"); document.getElementById("hsText").textContent = "API unreachable"; });
 
 // ---------- UI helpers ----------
 const LOAD_MSGS_ON = ["descending into incident memory…", "recall(): semantic + keyword + graph + temporal…", "reranking past incidents…", "reflect(): reasoning like a senior SRE…", "grounding the plan in what worked…"];
