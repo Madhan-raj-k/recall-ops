@@ -1,5 +1,5 @@
 /* RecallOps · app UI (restrained dark dashboard) */
-:root{--bg:#000000;--panel:rgba(17,17,19,.5);--panel2:rgba(24,24,27,.5);--line:#232326;--line2:#2e2e32;--tx:#e6e6e8;--tx2:#a1a1a8;--tx3:#6e6e76;--acc:#ffffff;--acc2:#d4d4d4;--ok:#ffffff;--warn:#bdbdbd;--bad:#ffffff;--cyan:#e5e5e5;--violet:#cfcfcf}
+:root{--bg:#000000;--panel:rgba(17,17,19,.3);--panel2:rgba(28,28,31,.4);--line:#232326;--line2:#2e2e32;--tx:#e6e6e8;--tx2:#a1a1a8;--tx3:#6e6e76;--acc:#ffffff;--acc2:#d4d4d4;--ok:#ffffff;--warn:#bdbdbd;--bad:#ffffff;--cyan:#e5e5e5;--violet:#cfcfcf}
 *{box-sizing:border-box}
 html,body{background:var(--bg);height:100%}
 body{color:var(--tx);font-size:14px;line-height:1.5;font-family:Inter,system-ui,sans-serif}
