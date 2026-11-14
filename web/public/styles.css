@@ -1,5 +1,5 @@
 /* RecallOps · app UI (restrained dark dashboard) */
-:root{--bg:#000000;--panel:#111113;--panel2:#161618;--line:#232326;--line2:#2e2e32;--tx:#e6e6e8;--tx2:#a1a1a8;--tx3:#6e6e76;--acc:#6e8bff;--acc2:#8ea4ff;--ok:#3fb27f;--warn:#e0a63b;--bad:#e5484d;--cyan:#8ea4ff;--violet:#a78bfa}
+:root{--bg:#000000;--panel:#111113;--panel2:#161618;--line:#232326;--line2:#2e2e32;--tx:#e6e6e8;--tx2:#a1a1a8;--tx3:#6e6e76;--acc:#ffffff;--acc2:#d4d4d4;--ok:#ffffff;--warn:#bdbdbd;--bad:#ffffff;--cyan:#e5e5e5;--violet:#cfcfcf}
 *{box-sizing:border-box}
 html,body{background:var(--bg);height:100%}
 body{color:var(--tx);font-size:14px;line-height:1.5;font-family:Inter,system-ui,sans-serif}
@@ -188,3 +188,11 @@ button.loading::after{content:"";position:absolute;width:14px;height:14px;border
 #bgfx{position:fixed;inset:0;z-index:0;pointer-events:none}
 .app{position:relative;z-index:1}
 .sidebar{background:rgba(14,14,16,.82);backdrop-filter:blur(6px)}
+/* monochrome theme */
+html{filter:grayscale(1)}
+.btn-primary{background:#fff;color:#000;border-color:#fff}
+.btn-primary:hover{background:#d4d4d4;border-color:#d4d4d4;color:#000}
+.btn-primary .spin,.btn-primary svg{color:#000}
+.btn-ghost{background:#000;color:#fff;border-color:#3a3a3a}
+.btn-ghost:hover{background:#fff;color:#000;border-color:#fff}
+.brand-mark{color:#000}

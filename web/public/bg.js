@@ -9,7 +9,7 @@
     const n = Math.round(Math.min(170, (W * H) / 9000));
     D = Array.from({ length: n }, () => ({
       x: Math.random() * W, y: Math.random() * H,
-      vx: (Math.random() - .5) * .35, vy: (Math.random() - .5) * .35,
+      vx: (Math.random() - .5) * .14, vy: (Math.random() - .5) * .14,
       r: Math.random() * 1.8 + .9, p: Math.random() * 6.283, z: Math.random() * .8 + .2
     }));
   }
@@ -35,16 +35,16 @@
   size();
   let t = 0;
   function frame() {
-    t += .016; energy *= .96; x.clearRect(0, 0, W, H);
-    const boost = 1 + energy * 1.6;
+    t += .008; energy *= .975; x.clearRect(0, 0, W, H);
+    const boost = 1 + energy * .8;
     for (const d of D) {
-      d.vx *= .985; d.vy *= .985;
-      if (Math.hypot(d.vx, d.vy) < .12) { d.vx += (Math.random() - .5) * .05; d.vy += (Math.random() - .5) * .05; }
+      d.vx *= .992; d.vy *= .992;
+      if (Math.hypot(d.vx, d.vy) < .06) { d.vx += (Math.random() - .5) * .02; d.vy += (Math.random() - .5) * .02; }
       d.x += d.vx * boost; d.y += d.vy * boost;
       if (d.x < -10) d.x = W + 10; if (d.x > W + 10) d.x = -10;
       if (d.y < -10) d.y = H + 10; if (d.y > H + 10) d.y = -10;
       const mx = d.x - mouse.x, my = d.y - mouse.y, md = Math.hypot(mx, my) || 1;
-      if (md < 140) { d.x += mx / md * 1.2; d.y += my / md * 1.2; }
+      if (md < 140) { d.x += mx / md * .5; d.y += my / md * .5; }
     }
     const L = 16000 + energy * 3000;
     x.lineWidth = .7;
@@ -60,7 +60,7 @@
       const a = Math.min(1, .6 + .35 * Math.sin(t * 2 + d.p) + energy * .1);
       x.fillStyle = `rgba(255,255,255,${a})`; x.beginPath(); x.arc(d.x, d.y, d.r * (1 + energy * .12), 0, 6.283); x.fill();
     }
-    for (let i = R.length - 1; i >= 0; i--) { const r = R[i]; r.r += 6; r.a *= .94;
+    for (let i = R.length - 1; i >= 0; i--) { const r = R[i]; r.r += 2.5; r.a *= .975;
       x.strokeStyle = `rgba(255,255,255,${r.a})`; x.lineWidth = 1.5; x.beginPath(); x.arc(r.x, r.y, r.r, 0, 6.283); x.stroke();
       if (r.a < .03) R.splice(i, 1); }
     requestAnimationFrame(frame);
