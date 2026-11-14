@@ -28,7 +28,7 @@
 <header class="hud-top">
   <a href="#top" class="brand"><span class="brand-dot"></span>RecallOps</a>
   <nav class="hidden md:flex gap-6 text-[13px] text-neutral-400">
-    <a href="#agent">Live agent</a><a href="#problem">Problem</a><a href="#triage">Triage</a><a href="#learning">Learning curve</a><a href="#resolve">Retain</a><a href="#explorer">Memory</a><a href="#how">How it works</a>
+    <a href="#agent">Incident workflow</a><a href="#problem">Problem</a><a href="#triage">Triage</a><a href="#learning">Learning curve</a><a href="#resolve">Retain</a><a href="#explorer">Memory</a><a href="#how">How it works</a>
   </nav>
   <a href="https://github.com/Madhan-raj-k/recall-ops" class="btn-ghost text-[13px]">GitHub ↗</a>
 </header>
@@ -40,7 +40,7 @@
   <h1 class="hero-title"><span class="line">Your on-call agent</span><span class="line glow-text">that never forgets.</span></h1>
   <p class="hero-sub reveal">The fix for tonight's outage is already in last month's postmortem. RecallOps dives into your incident memory, surfaces what worked (and what <em>failed</em>), and hands the engineer a ranked plan, in seconds.</p>
   <div class="flex flex-wrap gap-3 mt-9 reveal">
-    <a href="#agent" class="btn-primary">Run the live agent ↓</a>
+    <a href="#agent" class="btn-primary">Run the incident workflow ↓</a>
     <a href="#triage" class="btn-ghost">Memory OFF vs ON</a>
     <a href="#learning" class="btn-ghost">Watch it learn</a>
   </div>
@@ -54,46 +54,70 @@
 
 <!-- LIVE AGENT -->
 <section id="agent" class="sect">
-  <div class="kicker">live agent loop</div>
-  <h2 class="h2 reveal">Alert in. Memory recalled. Fix proposed. Lesson learned.</h2>
-  <p class="lead reveal">Fire a simulated alert (or POST one to <code>/api/agent/webhook</code>). The agent recalls the most similar past incidents from Hindsight, reasons out a fix, proposes a safe dry-run action, and after you resolve it, retains the lesson. Fire a similar alert again and watch it take the fast path.</p>
-  <div class="glass p-5 md:p-6 mt-8 reveal">
+  <div class="kicker">incident workflow</div>
+  <h2 class="h2 reveal">Retain → Recall → Investigate → Recommend → Approve → Verify → Learn.</h2>
+  <p class="lead reveal">Submit an incident. The same input is investigated with Memory OFF and Memory ON. Approve a remediation, run it in <b>simulation</b>, verify it, and retain the postmortem to Hindsight. Then submit a related incident and check that memory brings the lesson back.</p>
+  <div class="wf-disclosure mt-6">Demo data: <b>ShopNova is a fictional company</b> and every incident record is synthetic. Remediation is <b>simulated only</b>: nothing is ever executed against real infrastructure.</div>
+  <ol id="wfStepper" class="wf-stepper mt-6"></ol>
+
+  <div class="glass p-5 md:p-6 mt-5">
     <div class="flex flex-wrap items-center gap-3">
-      <button id="agSim" class="btn-primary">⚡ Simulate alert</button>
-      <select id="agPick" class="field !w-auto text-sm" aria-label="Sample alert"></select>
-      <span id="agStatus" class="ml-auto font-mono text-xs text-neutral-400"></span>
+      <select id="wfPick" class="field !w-auto text-sm" aria-label="Sample incident"><option value="">Pick a sample incident…</option></select>
+      <span id="wfBackend" class="ml-auto font-mono text-xs text-neutral-400"></span>
     </div>
-    <div class="mt-4 font-mono text-[11px] tracking-widest text-neutral-200/70">INCOMING ALERT</div>
-    <div id="agAlert" class="mt-2 font-mono text-sm text-neutral-100 min-h-[1.5rem]">—</div>
-    <ol id="agSteps" class="ag-steps mt-5"></ol>
-  </div>
-  <div class="grid lg:grid-cols-5 gap-5 mt-5">
-    <div class="glass p-5 lg:col-span-2">
-      <h3 class="h3">① Recalled: top similar incidents</h3>
-      <ul id="agMatches" class="mem-list"><li class="muted text-sm">Waiting for an alert.</li></ul>
-    </div>
-    <div class="glass p-5 lg:col-span-3">
-      <div class="flex items-baseline gap-3"><h3 class="h3">② Reasoning &amp; fix</h3><span id="agBadge" class="font-mono text-xs"></span></div>
-      <div id="agPlan" class="md out muted text-sm">The plan, with the agent's reasoning, appears here.</div>
-      <div id="agAction" class="mt-4"></div>
+    <label for="wfAlert" class="sr-only">Incident description</label>
+    <textarea id="wfAlert" maxlength="500" rows="2" class="field mt-3" placeholder="Describe the incident, e.g. API latency spike on payments-api, p95 4.8s, DB pool wait rising"></textarea>
+    <div class="flex flex-wrap items-center gap-3 mt-3">
+      <button id="wfRun" class="btn-primary">① Investigate: Memory OFF vs ON</button>
+      <button id="wfReset" class="btn-ghost sm">Reset workflow</button>
+      <span id="wfStatus" class="text-xs font-mono text-neutral-400"></span>
     </div>
   </div>
-  <div class="glass p-5 md:p-6 mt-5" id="agLearnBox" hidden>
-    <h3 class="h3">③ Resolve &amp; learn</h3>
-    <p class="text-sm text-neutral-400 mt-1">Confirm what actually fixed it. This is retained to memory so the next similar alert resolves faster.</p>
+
+  <div id="wfCompareBox" class="glass p-5 md:p-6 mt-5" hidden>
+    <h3 class="h3">Memory OFF vs Memory ON <span class="font-mono text-xs text-neutral-400" id="wfSame"></span></h3>
+    <div class="overflow-x-auto"><table class="wf-table mt-3"><thead><tr><th>Attribute</th><th>Memory OFF</th><th>Memory ON</th></tr></thead><tbody id="wfTable"></tbody></table></div>
+  </div>
+
+  <div id="wfInvBox" class="grid lg:grid-cols-2 gap-5 mt-5" hidden>
+    <article class="glass panel"><header class="panel-h"><div><div class="tag tag-off">Memory OFF</div><h3>Investigation without history</h3></div></header><div id="wfInvOff" class="text-sm"></div></article>
+    <article class="glass panel panel-on"><header class="panel-h"><div><div class="tag tag-on">Memory ON</div><h3>Investigation with Hindsight recall</h3></div></header><div id="wfInvOn" class="text-sm"></div></article>
+  </div>
+
+  <div id="wfSimBox" class="glass p-5 md:p-6 mt-5" hidden>
+    <h3 class="h3">② Similar past incidents (retrieved by Memory ON)</h3>
+    <div id="wfSimilar" class="grid md:grid-cols-3 gap-4 mt-3"></div>
+  </div>
+
+  <div id="wfActBox" class="glass p-5 md:p-6 mt-5" hidden>
+    <h3 class="h3">③ Evidence-backed remediation · human approval</h3>
+    <p class="text-sm text-neutral-400 mt-1">Every action waits for approval. Execution is a simulation. An approved action is not "resolved" until verification passes.</p>
+    <div id="wfActions" class="grid gap-4 mt-3"></div>
+  </div>
+
+  <div id="wfPmBox" class="glass p-5 md:p-6 mt-5" hidden>
+    <h3 class="h3">④ Postmortem → retain to memory</h3>
+    <p class="text-sm text-neutral-400 mt-1">Available once at least one action passed verification. Retention is confirmed only if the memory write succeeds; identical postmortems are written once.</p>
     <div class="grid md:grid-cols-2 gap-3 mt-3 text-sm">
-      <textarea id="agCause" rows="2" class="field" aria-label="Root cause" placeholder="Root cause"></textarea>
-      <textarea id="agFix" rows="2" class="field" aria-label="What fixed it" placeholder="What fixed it"></textarea>
+      <input id="pmTitle" class="field" maxlength="120" placeholder="Title *" aria-label="Postmortem title" />
+      <input id="pmService" class="field" maxlength="80" placeholder="Service *" aria-label="Service" />
+      <textarea id="pmCause" rows="2" class="field md:col-span-2" maxlength="1200" placeholder="Root cause *" aria-label="Root cause"></textarea>
+      <textarea id="pmLessons" rows="2" class="field" maxlength="800" placeholder="Lessons learned" aria-label="Lessons learned"></textarea>
+      <textarea id="pmPrevent" rows="2" class="field" maxlength="800" placeholder="Prevention" aria-label="Prevention"></textarea>
     </div>
+    <label class="text-xs text-neutral-400 flex items-center gap-2 mt-2"><input type="checkbox" id="pmTest" class="accent-neutral-300"> tag as test record</label>
     <div class="flex flex-wrap gap-3 mt-3">
-      <button id="agLearn" class="btn-primary">Mark resolved &amp; learn</button>
-      <button id="agAgain" class="btn-ghost" disabled>⚡ Fire a similar alert</button>
+      <button id="pmPreview" class="btn-ghost sm">Preview postmortem</button>
+      <button id="pmRetain" class="btn-primary sm">Retain to Hindsight</button>
     </div>
-    <div id="agLearnOut" class="mt-3 text-sm"></div>
+    <div id="pmOut" class="mt-3 text-sm"></div>
   </div>
-  <div class="glass p-5 md:p-6 mt-5" id="agCmp" hidden>
-    <h3 class="h3">④ Did it learn?</h3>
-    <div class="grid md:grid-cols-2 gap-4 mt-3 text-sm" id="agCmpBody"></div>
+
+  <div id="wfLearnBox" class="glass p-5 md:p-6 mt-5" hidden>
+    <h3 class="h3">⑤ Did it learn? Submit a related incident</h3>
+    <textarea id="wfAlert2" maxlength="500" rows="2" class="field mt-3" aria-label="Related incident"></textarea>
+    <button id="wfLearnRun" class="btn-primary sm mt-3">Re-investigate with Memory ON</button>
+    <div id="wfLearnOut" class="grid md:grid-cols-2 gap-4 mt-4 text-sm"></div>
   </div>
 </section>
 

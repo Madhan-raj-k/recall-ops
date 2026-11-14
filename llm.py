@@ -21,7 +21,7 @@ class LLM(Protocol):
 
 
 class GroqLLM:
-    def __init__(self, api_key: str, model: str, max_retries: int = 3, timeout: float = 60.0, client=None):
+    def __init__(self, api_key: str, model: str, max_retries: int = 3, timeout: float = 60.0, client=None, max_tokens: int = 1500):
         if client is None:
             from openai import OpenAI
 
@@ -30,6 +30,7 @@ class GroqLLM:
         self._client = client
         self.model = model
         self.max_retries = max_retries
+        self.max_tokens = max_tokens
 
     def complete(self, system: str, user: str) -> str:
         import openai
@@ -42,7 +43,7 @@ class GroqLLM:
                     model=self.model,
                     messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
                     temperature=0.2,
-                    max_tokens=1500,
+                    max_tokens=self.max_tokens,
                 )
                 text = _THINK.sub("", resp.choices[0].message.content or "").strip()
                 if not text:
