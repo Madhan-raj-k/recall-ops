@@ -82,7 +82,13 @@ def similar_incidents(memories, limit: int = 3) -> list[dict]:
         g = groups.get(m.document_id)
         if g is None:
             rec = cat.get(m.document_id)
-            g = dict(rec) if rec else {"id": m.document_id, "service": None, "outcome": "unknown", **_parse_memory_text(m.text)}
+            if rec:
+                g = dict(rec)
+            else:
+                parsed = _parse_memory_text(m.text) if "\nSymptoms observed:" in (m.text or "") else {}
+                if not parsed.get("title"):  # Hindsight fact: "<fact> | When: ... | Involving: ..."
+                    parsed["title"] = (m.text or "").split(" | ")[0].strip()[:180]
+                g = {"id": m.document_id, "service": None, "outcome": "unknown", **parsed}
             if not rec:
                 svc = next((t.split(":", 1)[1] for t in (m.tags or []) if t.startswith("service:")), None)
                 g["service"] = svc
