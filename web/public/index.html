@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>RecallOps · Incident response console</title>
-<meta name="description" content="RecallOps dives into your incident memory with Hindsight agent memory: recall past outages, reflect like a senior SRE, and get a ranked triage plan. Memory OFF vs ON, side by side." />
+<meta name="description" content="RecallOps: an on-call AI agent that remembers past incidents, built on Hindsight memory." />
 <meta name="theme-color" content="#0b0b0c" />
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Ccircle cx=%2216%22 cy=%2216%22 r=%227%22 fill=%22%23e5e5e5%22/%3E%3Ccircle cx=%2216%22 cy=%2216%22 r=%2213%22 fill=%22none%22 stroke=%22%23e5e5e5%22 stroke-opacity=%22.4%22 stroke-width=%222%22/%3E%3C/svg%3E" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -34,7 +34,7 @@
   <button class="menu-btn" id="menuBtn" aria-label="Open navigation"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
   <div class="crumbs"><span class="crumb-muted">ShopNova</span><span class="crumb-sep">/</span><span id="pageTitle">Live triage</span></div>
   <div class="top-right">
-    <span class="env-pill">Production · synthetic data</span>
+    <span class="env-pill">Demo data</span>
     <span class="status-pill" id="hsStatus"><span class="dot"></span><span id="hsText">Checking Hindsight…</span></span>
   </div>
 </header>
@@ -42,20 +42,20 @@
 
 <!-- LIVE AGENT -->
 <section id="agent" class="view" hidden>
-  <div class="page-h"><h1 class="page-title">Incident workflow</h1><p class="page-desc">Investigate an incident with Memory OFF vs ON, approve a simulated remediation, verify it, and retain the postmortem to Hindsight.</p></div>
-  <div class="wf-disclosure mt-6">Demo data: <b>ShopNova is a fictional company</b> and every incident record is synthetic. Remediation is <b>simulated only</b>: nothing is ever executed against real infrastructure.</div>
+  <div class="page-h"><h1 class="page-title">Incident workflow</h1><p class="page-desc">Investigate, approve a fix, check it worked, and save the lesson.</p></div>
+  <div class="wf-disclosure mt-6">Demo data: ShopNova is a fictional company. Fixes are simulated.</div>
   <ol id="wfStepper" class="wf-stepper mt-6"></ol>
 
   <div class="glass p-5 md:p-6 mt-5">
     <div class="flex flex-wrap items-center gap-3">
-      <select id="wfPick" class="field !w-auto text-sm" aria-label="Sample incident"><option value="">Pick a sample incident…</option></select>
+      <select id="wfPick" class="field !w-auto text-sm" aria-label="Sample incident"><option value="">Pick a sample…</option></select>
       <span id="wfBackend" class="ml-auto font-mono text-xs text-neutral-400"></span>
     </div>
     <label for="wfAlert" class="sr-only">Incident description</label>
-    <textarea id="wfAlert" maxlength="500" rows="2" class="field mt-3" placeholder="Describe the incident, e.g. API latency spike on payments-api, p95 4.8s, DB pool wait rising"></textarea>
+    <textarea id="wfAlert" maxlength="500" rows="2" class="field mt-3" placeholder="Describe the incident, e.g. payments-api is slow"></textarea>
     <div class="flex flex-wrap items-center gap-3 mt-3">
-      <button id="wfRun" class="btn-primary">Investigate (Memory OFF vs ON)</button>
-      <button id="wfReset" class="btn-ghost sm">Reset workflow</button>
+      <button id="wfRun" class="btn-primary">Investigate</button>
+      <button id="wfReset" class="btn-ghost sm">Reset</button>
       <span id="wfStatus" class="text-xs font-mono text-neutral-400"></span>
     </div>
   </div>
@@ -66,24 +66,24 @@
   </div>
 
   <div id="wfInvBox" class="grid lg:grid-cols-2 gap-5 mt-5" hidden>
-    <article class="glass panel"><header class="panel-h"><div><div class="tag tag-off">Memory OFF</div><h3>Investigation without history</h3></div></header><div id="wfInvOff" class="text-sm"></div></article>
-    <article class="glass panel panel-on"><header class="panel-h"><div><div class="tag tag-on">Memory ON</div><h3>Investigation with Hindsight recall</h3></div></header><div id="wfInvOn" class="text-sm"></div></article>
+    <article class="glass panel"><header class="panel-h"><div><div class="tag tag-off">Memory OFF</div><h3>Without memory</h3></div></header><div id="wfInvOff" class="text-sm"></div></article>
+    <article class="glass panel panel-on"><header class="panel-h"><div><div class="tag tag-on">Memory ON</div><h3>With memory</h3></div></header><div id="wfInvOn" class="text-sm"></div></article>
   </div>
 
   <div id="wfSimBox" class="glass p-5 md:p-6 mt-5" hidden>
-    <h3 class="h3">② Similar past incidents (retrieved by Memory ON)</h3>
+    <h3 class="h3">② Similar past incidents</h3>
     <div id="wfSimilar" class="grid md:grid-cols-3 gap-4 mt-3"></div>
   </div>
 
   <div id="wfActBox" class="glass p-5 md:p-6 mt-5" hidden>
-    <h3 class="h3">③ Evidence-backed remediation · human approval</h3>
-    <p class="text-sm text-neutral-400 mt-1">Every action waits for approval. Execution is a simulation. An approved action is not "resolved" until verification passes.</p>
+    <h3 class="h3">③ Suggested fixes · you approve</h3>
+    <p class="text-sm text-neutral-400 mt-1">Nothing runs without your approval.</p>
     <div id="wfActions" class="grid gap-4 mt-3"></div>
   </div>
 
   <div id="wfPmBox" class="glass p-5 md:p-6 mt-5" hidden>
-    <h3 class="h3">④ Postmortem → retain to memory</h3>
-    <p class="text-sm text-neutral-400 mt-1">Available once at least one action passed verification. Retention is confirmed only if the memory write succeeds; identical postmortems are written once.</p>
+    <h3 class="h3">④ Save the lesson</h3>
+    <p class="text-sm text-neutral-400 mt-1">Unlocks after a fix is verified.</p>
     <div class="grid md:grid-cols-2 gap-3 mt-3 text-sm">
       <input id="pmTitle" class="field" maxlength="120" placeholder="Title *" aria-label="Postmortem title" />
       <input id="pmService" class="field" maxlength="80" placeholder="Service *" aria-label="Service" />
@@ -91,103 +91,103 @@
       <textarea id="pmLessons" rows="2" class="field" maxlength="800" placeholder="Lessons learned" aria-label="Lessons learned"></textarea>
       <textarea id="pmPrevent" rows="2" class="field" maxlength="800" placeholder="Prevention" aria-label="Prevention"></textarea>
     </div>
-    <label class="text-xs text-neutral-400 flex items-center gap-2 mt-2"><input type="checkbox" id="pmTest" class="accent-neutral-300"> tag as test record</label>
+    <label class="text-xs text-neutral-400 flex items-center gap-2 mt-2"><input type="checkbox" id="pmTest" class="accent-neutral-300"> test record</label>
     <div class="flex flex-wrap gap-3 mt-3">
-      <button id="pmPreview" class="btn-ghost sm">Preview postmortem</button>
-      <button id="pmRetain" class="btn-primary sm">Retain to Hindsight</button>
+      <button id="pmPreview" class="btn-ghost sm">Preview</button>
+      <button id="pmRetain" class="btn-primary sm">Save to memory</button>
     </div>
     <div id="pmOut" class="mt-3 text-sm"></div>
   </div>
 
   <div id="wfLearnBox" class="glass p-5 md:p-6 mt-5" hidden>
-    <h3 class="h3">⑤ Did it learn? Submit a related incident</h3>
+    <h3 class="h3">⑤ Did it learn? Try a similar incident</h3>
     <textarea id="wfAlert2" maxlength="500" rows="2" class="field mt-3" aria-label="Related incident"></textarea>
-    <button id="wfLearnRun" class="btn-primary sm mt-3">Re-investigate with Memory ON</button>
+    <button id="wfLearnRun" class="btn-primary sm mt-3">Investigate again</button>
     <div id="wfLearnOut" class="grid md:grid-cols-2 gap-4 mt-4 text-sm"></div>
   </div>
 </section>
 
 <!-- TRIAGE -->
 <section id="triage" class="view" hidden>
-  <div class="page-h"><h1 class="page-title">Live triage</h1><p class="page-desc">Pick an alert. The left agent answers from nothing. The right one calls Hindsight <code>recall</code> + <code>reflect</code> over ShopNova's incident history (synthetic) before planning.</p></div>
+  <div class="page-h"><h1 class="page-title">Live triage</h1><p class="page-desc">Same alert, two answers: one without memory, one with Hindsight memory.</p></div>
   <div class="glass p-5 md:p-6 mt-5">
     <div id="examples" class="flex flex-wrap gap-2"></div>
     <label for="alert" class="sr-only">Alert text</label>
-    <textarea id="alert" maxlength="500" rows="2" class="field mt-4" placeholder="Paste an alert, e.g. PagerDuty SEV1: payments-api 5xx…"></textarea>
+    <textarea id="alert" maxlength="500" rows="2" class="field mt-4" placeholder="Paste an alert, e.g. payments-api errors"></textarea>
     <div class="flex flex-wrap items-center gap-4 mt-3">
       <button id="runTriage" class="btn-primary">Run triage</button>
-      <label class="text-sm flex items-center gap-2 text-neutral-400"><input type="checkbox" id="useReflect" checked class="accent-neutral-300"> include Hindsight reflect</label>
+      <label class="text-sm flex items-center gap-2 text-neutral-400"><input type="checkbox" id="useReflect" checked class="accent-neutral-300"> deeper reasoning</label>
       <span id="alertCount" class="ml-auto text-xs font-mono text-neutral-500">0/500</span>
     </div>
   </div>
   <div class="grid lg:grid-cols-2 gap-5 mt-5">
     <article class="glass panel" id="offPanel">
-      <header class="panel-h"><div><div class="tag tag-off">Memory OFF</div><h3>Generic copilot</h3></div><div class="meter" id="offMeter"></div></header>
+      <header class="panel-h"><div><div class="tag tag-off">Memory OFF</div><h3>Without memory</h3></div><div class="meter" id="offMeter"></div></header>
       <div id="offOut" class="md out muted">Waiting for an alert.</div>
     </article>
     <article class="glass panel panel-on" id="onPanel">
-      <header class="panel-h"><div><div class="tag tag-on">Memory ON</div><h3>RecallOps + Hindsight</h3></div><div class="meter" id="onMeter"></div></header>
+      <header class="panel-h"><div><div class="tag tag-on">Memory ON</div><h3>With memory</h3></div><div class="meter" id="onMeter"></div></header>
       <div id="onOut" class="md out muted">Waiting for an alert.</div>
     </article>
   </div>
   <div class="grid lg:grid-cols-5 gap-5 mt-5">
     <div class="glass p-5 lg:col-span-3">
-      <div class="flex items-baseline gap-3"><h3 class="h3">Recalled incidents</h3><span id="recallCount" class="font-mono text-xs text-neutral-200/80"></span></div>
-      <div id="nodes" class="nodes"><span class="muted text-sm">Past incidents surfaced by Hindsight will appear here.</span></div>
+      <div class="flex items-baseline gap-3"><h3 class="h3">Past incidents found</h3><span id="recallCount" class="font-mono text-xs text-neutral-200/80"></span></div>
+      <div id="nodes" class="nodes"><span class="muted text-sm">Matches appear here.</span></div>
       <ul id="recalled" class="mem-list"></ul>
     </div>
     <div class="glass p-5 lg:col-span-2">
-      <h3 class="h3">Reflect</h3>
-      <div id="reflect" class="md out muted max-h-[30rem] overflow-auto pr-1 text-sm">Hindsight reasons over the whole bank, guided by an SRE mission: cite incidents, prefer what worked, warn about what failed.</div>
+      <h3 class="h3">Reasoning</h3>
+      <div id="reflect" class="md out muted max-h-[30rem] overflow-auto pr-1 text-sm">What worked before, and what didn't.</div>
     </div>
   </div>
 </section>
 
 <!-- LEARNING -->
 <section id="learning" class="view" hidden>
-  <div class="page-h"><h1 class="page-title">Learning curve</h1><p class="page-desc">You get a private, empty memory bank. Interaction 1 knows nothing. Retain one postmortem, ask the same question, and the plan goes from guesswork to specific.</p></div>
+  <div class="page-h"><h1 class="page-title">Learning curve</h1><p class="page-desc">Watch the agent go from guessing to knowing after one lesson.</p></div>
   <div class="glass p-5 md:p-6 mt-5">
-    <div class="font-mono text-[11px] tracking-widest text-neutral-200/70">SCENARIO ALERT</div>
+    <div class="font-mono text-[11px] tracking-widest text-neutral-200/70">ALERT</div>
     <div id="lcAlert" class="mt-2 text-neutral-100 font-mono text-sm leading-relaxed"></div>
     <ol class="steps mt-6">
-      <li class="step" id="s1"><div class="step-n">01</div><div class="step-t">Interaction 1 · empty memory</div><button id="lc1" class="btn-ghost sm">Triage</button><div id="lc1b" class="step-o"></div></li>
-      <li class="step" id="s2"><div class="step-n">02</div><div class="step-t">Engineer resolves it · retain</div><button id="lc2" class="btn-ghost sm" disabled>Retain postmortem</button><div id="lc2b" class="step-o"></div></li>
-      <li class="step" id="s3"><div class="step-n">03</div><div class="step-t">Interaction 2 · same alert</div><button id="lc3" class="btn-primary sm" disabled>Triage again</button><div id="lc3b" class="step-o"></div></li>
+      <li class="step" id="s1"><div class="step-n">01</div><div class="step-t">Ask with empty memory</div><button id="lc1" class="btn-ghost sm">Triage</button><div id="lc1b" class="step-o"></div></li>
+      <li class="step" id="s2"><div class="step-n">02</div><div class="step-t">Save one lesson</div><button id="lc2" class="btn-ghost sm" disabled>Save lesson</button><div id="lc2b" class="step-o"></div></li>
+      <li class="step" id="s3"><div class="step-n">03</div><div class="step-t">Ask again</div><button id="lc3" class="btn-primary sm" disabled>Triage again</button><div id="lc3b" class="step-o"></div></li>
     </ol>
-    <details class="mt-5 text-sm"><summary class="cursor-pointer text-neutral-400">The postmortem that gets retained (synthetic)</summary><pre id="lcPm" class="pm"></pre></details>
+    <details class="mt-5 text-sm"><summary class="cursor-pointer text-neutral-400">See the saved lesson</summary><pre id="lcPm" class="pm"></pre></details>
     <div class="grid lg:grid-cols-2 gap-5 mt-6">
-      <div class="sub"><div class="sub-h">Before · interaction 1 <span id="lcMeter1" class="meter sm"></span></div><div id="lcBefore" class="md out muted text-sm">—</div></div>
-      <div class="sub sub-on"><div class="sub-h">After · interaction 2 <span id="lcMeter2" class="meter sm"></span></div><div id="lcAfter" class="md out muted text-sm">—</div></div>
+      <div class="sub"><div class="sub-h">Before <span id="lcMeter1" class="meter sm"></span></div><div id="lcBefore" class="md out muted text-sm">—</div></div>
+      <div class="sub sub-on"><div class="sub-h">After <span id="lcMeter2" class="meter sm"></span></div><div id="lcAfter" class="md out muted text-sm">—</div></div>
     </div>
   </div>
 </section>
 
 <!-- RESOLVE -->
 <section id="resolve" class="view" hidden>
-  <div class="page-h"><h1 class="page-title">Retain postmortem</h1><p class="page-desc">Write down what fixed it and what didn't. It is retained into the shared ShopNova bank with its timestamp, service and team tags, and the next similar alert benefits.</p></div>
+  <div class="page-h"><h1 class="page-title">Retain postmortem</h1><p class="page-desc">Save what fixed it and what didn't, so next time is faster.</p></div>
   <form id="resForm" class="glass p-5 md:p-6 mt-5 grid md:grid-cols-6 gap-4 text-sm">
-    <label class="md:col-span-3"><span class="form-label">Title *</span><input name="title" required maxlength="120" placeholder="Title *  e.g. Checkout 503s after CDN config push" class="field" aria-label="Title" value="Checkout 503s after CDN config push" /></label>
-    <label class="md:col-span-2"><span class="form-label">Service *</span><input name="service" required maxlength="60" placeholder="Service *  e.g. checkout-web" class="field" aria-label="Service" value="checkout-web" /></label>
+    <label class="md:col-span-3"><span class="form-label">Title *</span><input name="title" required maxlength="120" placeholder="Title" class="field" aria-label="Title" value="Checkout 503s after CDN config push" /></label>
+    <label class="md:col-span-2"><span class="form-label">Service *</span><input name="service" required maxlength="60" placeholder="Service" class="field" aria-label="Service" value="checkout-web" /></label>
     <label class=""><span class="form-label">Severity</span><select name="severity" class="field" aria-label="Severity"><option selected>SEV1</option><option>SEV2</option><option>SEV3</option><option>SEV4</option></select></label>
-    <label class="md:col-span-6"><span class="form-label">Symptoms / alerts</span><textarea name="symptoms" maxlength="1200" rows="2" placeholder="Symptoms / alerts" class="field" aria-label="Symptoms">PagerDuty SEV1: checkout-web 503 rate jumped from 0.2% to 38% within 4 minutes of a CDN config deploy. Cart page loads, but Place Order times out for users in the South region.</textarea></label>
+    <label class="md:col-span-6"><span class="form-label">Symptoms</span><textarea name="symptoms" maxlength="1200" rows="2" placeholder="Symptoms" class="field" aria-label="Symptoms">PagerDuty SEV1: checkout-web 503 rate jumped from 0.2% to 38% within 4 minutes of a CDN config deploy. Cart page loads, but Place Order times out for users in the South region.</textarea></label>
     <label class="md:col-span-3"><span class="form-label">Root cause *</span><textarea name="root_cause" required maxlength="1200" rows="2" placeholder="Root cause *" class="field" aria-label="Root cause">The new CDN rule cached POST /checkout responses and stripped the session cookie, so origin rejected orders as unauthenticated.</textarea></label>
     <label class="md:col-span-3"><span class="form-label">What fixed it *</span><textarea name="what_worked" required maxlength="1200" rows="2" placeholder="What fixed it *" class="field" aria-label="What fixed it">Rolled back the CDN config to the previous version and purged the /checkout/* cache path. Errors dropped to normal in 3 minutes. Added a CI check that blocks caching on POST routes.</textarea></label>
-    <label class="md:col-span-6"><span class="form-label">What did NOT work</span><textarea name="what_failed" maxlength="1200" rows="2" placeholder="What did NOT work (the most valuable memory)" class="field" aria-label="What did not work">Restarting checkout-web pods and scaling them from 6 to 12 did nothing and wasted 25 minutes, because the app servers were healthy and the problem was at the CDN.</textarea></label>
-    <label class="md:col-span-2"><span class="form-label">Teams</span><input name="teams" maxlength="120" placeholder="Teams, comma separated" class="field" aria-label="Teams" value="payments, platform-sre" /></label>
+    <label class="md:col-span-6"><span class="form-label">What did NOT work</span><textarea name="what_failed" maxlength="1200" rows="2" placeholder="What did NOT work" class="field" aria-label="What did not work">Restarting checkout-web pods and scaling them from 6 to 12 did nothing and wasted 25 minutes, because the app servers were healthy and the problem was at the CDN.</textarea></label>
+    <label class="md:col-span-2"><span class="form-label">Teams</span><input name="teams" maxlength="120" placeholder="Teams" class="field" aria-label="Teams" value="payments, platform-sre" /></label>
     <label class="md:col-span-2"><span class="form-label">Runbook</span><input name="runbook" maxlength="120" placeholder="Runbook" class="field" aria-label="Runbook" value="RB-CDN-ROLLBACK" /></label>
-    <label class=""><span class="form-label">Minutes to resolve</span><input name="time_to_resolve_min" type="number" min="0" max="10000" placeholder="Minutes" class="field" aria-label="Minutes to resolve" value="42" /></label>
-    <button id="resBtn" class="btn-primary self-end">Retain to memory</button>
+    <label class=""><span class="form-label">Minutes</span><input name="time_to_resolve_min" type="number" min="0" max="10000" placeholder="Minutes" class="field" aria-label="Minutes to resolve" value="42" /></label>
+    <button id="resBtn" class="btn-primary self-end">Save to memory</button>
     <div id="resOut" class="md:col-span-6"></div>
   </form>
 </section>
 
 <!-- EXPLORER -->
 <section id="explorer" class="view" hidden>
-  <div class="page-h"><h1 class="page-title">Memory explorer</h1><p class="page-desc">Facts and consolidated observations that Hindsight extracted from postmortems, laid out on a timeline. Ask it anything.</p></div>
+  <div class="page-h"><h1 class="page-title">Memory</h1><p class="page-desc">Everything the agent remembers. Search in plain English.</p></div>
   <div class="glass p-5 md:p-6 mt-5">
     <div class="flex flex-col sm:flex-row gap-3">
-      <input id="exQ" maxlength="300" class="field flex-1" placeholder="e.g. What fixed Redis eviction before?  (empty = latest memories)" aria-label="Memory search" />
-      <button id="exBtn" class="btn-ghost">Search memory</button>
+      <input id="exQ" maxlength="300" class="field flex-1" placeholder="e.g. What fixed Redis before?" aria-label="Memory search" />
+      <button id="exBtn" class="btn-ghost">Search</button>
     </div>
     <ol id="timeline" class="timeline"></ol>
   </div>
@@ -195,7 +195,7 @@
 
 <!-- HOW -->
 <section id="how" class="view" hidden>
-  <div class="page-h"><h1 class="page-title">How it works</h1><p class="page-desc">RecallOps uses three Hindsight calls against one memory bank: retain, recall and reflect.</p></div>
+  <div class="page-h"><h1 class="page-title">How it works</h1><p class="page-desc">Three Hindsight memory steps: retain, recall, reflect.</p></div>
   <div class="glass p-5 md:p-6 mt-5">
     <svg viewBox="0 0 900 260" class="w-full h-auto" role="img" aria-label="Diagram: postmortems are retained into the Hindsight bank; alerts recall and reflect from it to produce a plan">
       <defs>
@@ -212,14 +212,14 @@
       <text x="270" y="50" class="lbl" text-anchor="middle">retain()</text><text x="270" y="232" class="lbl" text-anchor="middle">recall() + reflect()</text><text x="615" y="114" class="lbl" text-anchor="middle">context → LLM</text>
     </svg>
     <div class="grid md:grid-cols-3 gap-4 mt-6 text-sm">
-      <div class="sub"><div class="font-mono text-neutral-200">retain()</div><p class="mt-2 text-neutral-300">Each postmortem goes in with its real incident timestamp, the incident ID as <code>document_id</code>, and tags like <code>service:payments-api</code>. Hindsight extracts facts and entities and links them.</p></div>
-      <div class="sub"><div class="font-mono text-neutral-200">recall()</div><p class="mt-2 text-neutral-300">Semantic + keyword + graph + temporal retrieval, reranked and cut to a 2,048-token budget. The top facts, with source incident IDs, ground the LLM.</p></div>
-      <div class="sub"><div class="font-mono text-neutral-200">reflect()</div><p class="mt-2 text-neutral-300">An agentic loop over the whole bank with an SRE mission: cite incidents, prefer fixes that worked, warn about fixes that failed.</p></div>
+      <div class="sub"><div class="font-mono text-neutral-200">retain()</div><p class="mt-2 text-neutral-300">Saves what happened in each incident.</p></div>
+      <div class="sub"><div class="font-mono text-neutral-200">recall()</div><p class="mt-2 text-neutral-300">Finds similar past incidents.</p></div>
+      <div class="sub"><div class="font-mono text-neutral-200">reflect()</div><p class="mt-2 text-neutral-300">Reasons over them like a senior engineer.</p></div>
     </div>
   </div>
 </section>
 </main>
-<footer class="app-foot">All incident data is synthetic (fictional company ShopNova). Remediation is simulated. Public demo: rate-limited; calls hit Hindsight Cloud + Groq and take ~5–20 s.</footer>
+<footer class="app-foot">Demo data · fictional company · fixes simulated.</footer>
 </div>
 </div>
 

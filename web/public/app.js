@@ -35,8 +35,8 @@ fetch("/api/health").then((r) => r.json()).then((h) => {
 }).catch(() => { document.getElementById("hsStatus").classList.add("warn"); document.getElementById("hsText").textContent = "API unreachable"; });
 
 // ---------- UI helpers ----------
-const LOAD_MSGS_ON = ["descending into incident memory…", "recall(): semantic + keyword + graph + temporal…", "reranking past incidents…", "reflect(): reasoning like a senior SRE…", "grounding the plan in what worked…"];
-const LOAD_MSGS_OFF = ["thinking without memory…", "drafting a generic checklist…"];
+const LOAD_MSGS_ON = ["searching memory…", "finding past incidents…", "reasoning…", "writing the plan…"];
+const LOAD_MSGS_OFF = ["thinking without memory…"];
 function sonar(el, msgs, sub = "") {
   el.classList.remove("muted");
   el.innerHTML = `<div class="sonar"><div class="ring"><span></span><i></i></div><div><div class="msg">${esc(msgs[0])}</div><div class="sub">${esc(sub)}<span class="secs">0.0s</span></div></div></div>`;
@@ -73,11 +73,11 @@ const memItem = (m) => `<li><div class="meta">${tyChip(m.type)}<span>${esc((m.oc
 async function api(path, opts = {}) {
   let r;
   try { r = await fetch(path, { headers: { "content-type": "application/json" }, ...opts }); }
-  catch { throw new Error("Network error: could not reach the RecallOps API. Check your connection and retry."); }
+  catch { throw new Error("Network error. Please retry."); }
   let body = null; try { body = await r.json(); } catch { /* not json */ }
   if (!r.ok) {
     let d = body && body.detail; if (Array.isArray(d)) d = d.map((x) => x.msg).join("; ");
-    if (r.status === 504) d = "The memory dive took too long (timeout). Try again, or untick reflect for a faster run.";
+    if (r.status === 504) d = "Took too long. Try again, or untick deeper reasoning.";
     throw new Error(d || `Request failed (${r.status}). Please try again.`);
   }
   return body;
@@ -106,7 +106,7 @@ function renderNodes(res) {
   if (HAS_GSAP && !REDUCE) gsap.from("#nodes .node", { scale: 0, opacity: 0, duration: 0.6, ease: "back.out(2)", stagger: 0.07 });
   $("recalled").innerHTML = res.memories.slice(0, 40).map(memItem).join("");
   if (res.reflection) streamIn($("reflect"), md(res.reflection));
-  else { $("reflect").classList.add("muted"); $("reflect").textContent = $("useReflect").checked ? "No reflect output." : "Reflect was turned off for this run."; }
+  else { $("reflect").classList.add("muted"); $("reflect").textContent = $("useReflect").checked ? "No reasoning returned." : "Deeper reasoning was off."; }
   window.dispatchEvent(new Event("recall-pulse"));
 }
 async function runTriage() {
@@ -117,8 +117,8 @@ async function runTriage() {
   $("offMeter").innerHTML = $("onMeter").innerHTML = "";
   $("nodes").innerHTML = ""; $("recalled").innerHTML = ""; $("recallCount").textContent = "";
   const stopOff = sonar($("offOut"), LOAD_MSGS_OFF, "no memory · ");
-  const stopOn = sonar($("onOut"), LOAD_MSGS_ON, reflect ? "recall + reflect · " : "recall · ");
-  $("reflect").classList.add("muted"); $("reflect").textContent = reflect ? "Waiting for reflect…" : "Reflect is off for this run.";
+  const stopOn = sonar($("onOut"), LOAD_MSGS_ON, reflect ? "memory · " : "memory · ");
+  $("reflect").classList.add("muted"); $("reflect").textContent = reflect ? "Reasoning…" : "Deeper reasoning is off.";
   const off = api("/api/triage", { method: "POST", body: JSON.stringify({ alert, use_memory: false, reflect: false }) })
     .then((r) => { stopOff(); streamIn($("offOut"), warnBox(r.warnings) + md(r.plan)); meter($("offMeter"), r.confidence); })
     .catch((e) => { stopOff(); $("offOut").innerHTML = errBox(e.message); });
@@ -149,7 +149,7 @@ const setStep = (n) => ["s1", "s2", "s3"].forEach((id, i) => { $(id).classList.t
 setStep(1);
 async function lcTriage(btn, out, info, meterEl) {
   btn.disabled = true;
-  const stop = sonar(out, ["opening your private memory bank…", "recall()…", "planning…"], "sandbox · ");
+  const stop = sonar(out, ["searching memory…", "planning…"], "");
   try {
     if (!sandbox) sandbox = (await api("/api/learning/start", { method: "POST" })).sandbox;
     const r = await api("/api/learning/triage", { method: "POST", body: JSON.stringify({ sandbox, alert: LC.alert }) });
@@ -161,10 +161,10 @@ async function lcTriage(btn, out, info, meterEl) {
 }
 $("lc1").onclick = async () => { const r = await lcTriage($("lc1"), $("lcBefore"), $("lc1b"), $("lcMeter1")); if (r) { $("lc2").disabled = false; setStep(2); } };
 $("lc2").onclick = async () => {
-  $("lc2").disabled = true; $("lc2b").textContent = "retaining into Hindsight…";
+  $("lc2").disabled = true; $("lc2b").textContent = "saving…";
   try {
     const r = await api("/api/learning/resolve", { method: "POST", body: JSON.stringify({ ...LC.pm, sandbox }) });
-    $("lc2b").innerHTML = `retained <span class="src">${esc(r.incident_id)}</span>`; $("lc3").disabled = false; setStep(3);
+    $("lc2b").innerHTML = `saved <span class="src">${esc(r.incident_id)}</span>`; $("lc3").disabled = false; setStep(3);
     window.dispatchEvent(new Event("recall-pulse"));
   } catch (e) { $("lc2b").innerHTML = errBox(e.message); $("lc2").disabled = false; }
 };
@@ -176,11 +176,11 @@ $("resForm").onsubmit = async (ev) => {
   const fd = Object.fromEntries(new FormData($("resForm")).entries());
   fd.time_to_resolve_min = fd.time_to_resolve_min ? parseInt(fd.time_to_resolve_min, 10) : null;
   $("resBtn").disabled = true;
-  const stop = sonar($("resOut"), ["sinking the postmortem into memory…", "retain(): extracting facts and entities…"], "");
+  const stop = sonar($("resOut"), ["saving to memory…"], "");
   try {
     const r = await api("/api/resolve", { method: "POST", body: JSON.stringify(fd) });
     stop();
-    $("resOut").innerHTML = `<div class="ok">Retained <b class="font-mono">${esc(r.incident_id)}</b>. Triage a similar alert above and watch it surface.</div>
+    $("resOut").innerHTML = `<div class="ok">Retained <b class="font-mono">${esc(r.incident_id)}</b>. Try a similar alert in Live triage.</div>
       <details class="mt-2"><summary class="cursor-pointer text-neutral-400 text-sm">What was sent to Hindsight retain()</summary><pre class="pm">${esc(r.memory_text)}\n\ntags: ${esc(r.tags.join(", "))}\ntimestamp: ${esc(r.timestamp)}</pre></details>`;
     $("resForm").reset(); window.dispatchEvent(new Event("recall-pulse"));
   } catch (e) { stop(); $("resOut").innerHTML = errBox(e.message); }
@@ -191,7 +191,7 @@ $("resForm").onsubmit = async (ev) => {
 async function explore() {
   const q = $("exQ").value.trim();
   $("timeline").innerHTML = `<li style="list-style:none" class="-ml-6"></li>`;
-  const stop = sonar($("timeline").firstChild, [q ? "recalling…" : "surfacing the latest memories…"], "");
+  const stop = sonar($("timeline").firstChild, [q ? "recalling…" : "loading memories…"], "");
   try {
     const r = await api(`/api/explore?q=${encodeURIComponent(q)}&limit=60`);
     stop();
@@ -351,7 +351,7 @@ new IntersectionObserver((ents, obs) => { if (ents.some((e) => e.isIntersecting)
     save(); render();
   };
   $("pmRetain").onclick = async () => {
-    $("pmRetain").disabled = true; $("pmOut").innerHTML = '<div class="muted">writing to memory… (can take 10–30 s)</div>';
+    $("pmRetain").disabled = true; $("pmOut").innerHTML = '<div class="muted">saving… (10–30 s)</div>';
     try {
       const d = await post("/api/workflow/postmortem", pmBody(true));
       const r = d.retention;
@@ -365,7 +365,7 @@ new IntersectionObserver((ents, obs) => { if (ents.some((e) => e.isIntersecting)
 
   $("wfLearnRun").onclick = async () => {
     const alert = $("wfAlert2").value.trim(); if (!alert || !W.retained) return;
-    $("wfLearnRun").disabled = true; $("wfLearnOut").innerHTML = '<div class="muted">recalling and investigating…</div>';
+    $("wfLearnRun").disabled = true; $("wfLearnOut").innerHTML = '<div class="muted">investigating…</div>';
     try {
       const [inv, check] = await Promise.all([post("/api/workflow/investigate", { alert, use_memory: true }),
         post("/api/workflow/recall-check", { alert, incident_id: W.retained.incident_id })]);
@@ -389,7 +389,7 @@ new IntersectionObserver((ents, obs) => { if (ents.some((e) => e.isIntersecting)
   $("wfPick").onchange = () => { const s = samples.find((x) => x.key === $("wfPick").value); if (s) { W.sample = s; $("wfAlert").value = s.alert; $("wfAlert2").value = s.followup; } };
   api("/api/agent/samples").then((j) => {
     samples = j.samples || [];
-    $("wfPick").innerHTML = '<option value="">Pick a sample incident…</option>' + samples.map((s) => `<option value="${esc(s.key)}">${esc(s.alert.slice(0, 70))}…</option>`).join("");
+    $("wfPick").innerHTML = '<option value="">Pick a sample…</option>' + samples.map((s) => `<option value="${esc(s.key)}">${esc(s.alert.slice(0, 70))}…</option>`).join("");
   }).catch(() => {});
   api("/api/health").then((h) => ($("wfBackend").textContent = `memory: ${h.memory} · llm: ${h.llm || "none (deterministic fallback)"}`)).catch(() => ($("wfBackend").textContent = "API unreachable"));
   try { const saved = JSON.parse(sessionStorage.getItem(KEY) || "null"); if (saved && saved.cmp) { W = saved; $("wfAlert").value = W.alert; status("restored your in-progress workflow"); } } catch {}
