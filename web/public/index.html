@@ -196,16 +196,16 @@
   <h2 class="h2 reveal">Every resolved incident sinks into memory.</h2>
   <p class="lead reveal">Write down what fixed it and what didn't. It is retained into the shared ShopNova bank with its timestamp, service and team tags, and the next similar alert benefits.</p>
   <form id="resForm" class="glass p-5 md:p-6 mt-8 grid md:grid-cols-6 gap-3 text-sm reveal">
-    <input name="title" required maxlength="120" placeholder="Title *  e.g. Checkout 503s after CDN config push" class="field md:col-span-3" aria-label="Title" />
-    <input name="service" required maxlength="60" placeholder="Service *  e.g. checkout-web" class="field md:col-span-2" aria-label="Service" />
-    <select name="severity" class="field" aria-label="Severity"><option>SEV1</option><option selected>SEV2</option><option>SEV3</option><option>SEV4</option></select>
-    <textarea name="symptoms" maxlength="1200" rows="2" placeholder="Symptoms / alerts" class="field md:col-span-6" aria-label="Symptoms"></textarea>
-    <textarea name="root_cause" required maxlength="1200" rows="2" placeholder="Root cause *" class="field md:col-span-3" aria-label="Root cause"></textarea>
-    <textarea name="what_worked" required maxlength="1200" rows="2" placeholder="What fixed it *" class="field md:col-span-3" aria-label="What fixed it"></textarea>
-    <textarea name="what_failed" maxlength="1200" rows="2" placeholder="What did NOT work (the most valuable memory)" class="field md:col-span-6" aria-label="What did not work"></textarea>
-    <input name="teams" maxlength="120" placeholder="Teams, comma separated" class="field md:col-span-2" aria-label="Teams" />
-    <input name="runbook" maxlength="120" placeholder="Runbook" class="field md:col-span-2" aria-label="Runbook" />
-    <input name="time_to_resolve_min" type="number" min="0" max="10000" placeholder="Minutes" class="field" aria-label="Minutes to resolve" />
+    <input name="title" required maxlength="120" placeholder="Title *  e.g. Checkout 503s after CDN config push" class="field md:col-span-3" aria-label="Title" value="Checkout 503s after CDN config push" />
+    <input name="service" required maxlength="60" placeholder="Service *  e.g. checkout-web" class="field md:col-span-2" aria-label="Service" value="checkout-web" />
+    <select name="severity" class="field" aria-label="Severity"><option selected>SEV1</option><option>SEV2</option><option>SEV3</option><option>SEV4</option></select>
+    <textarea name="symptoms" maxlength="1200" rows="2" placeholder="Symptoms / alerts" class="field md:col-span-6" aria-label="Symptoms">PagerDuty SEV1: checkout-web 503 rate jumped from 0.2% to 38% within 4 minutes of a CDN config deploy. Cart page loads, but Place Order times out for users in the South region.</textarea>
+    <textarea name="root_cause" required maxlength="1200" rows="2" placeholder="Root cause *" class="field md:col-span-3" aria-label="Root cause">The new CDN rule cached POST /checkout responses and stripped the session cookie, so origin rejected orders as unauthenticated.</textarea>
+    <textarea name="what_worked" required maxlength="1200" rows="2" placeholder="What fixed it *" class="field md:col-span-3" aria-label="What fixed it">Rolled back the CDN config to the previous version and purged the /checkout/* cache path. Errors dropped to normal in 3 minutes. Added a CI check that blocks caching on POST routes.</textarea>
+    <textarea name="what_failed" maxlength="1200" rows="2" placeholder="What did NOT work (the most valuable memory)" class="field md:col-span-6" aria-label="What did not work">Restarting checkout-web pods and scaling them from 6 to 12 did nothing and wasted 25 minutes, because the app servers were healthy and the problem was at the CDN.</textarea>
+    <input name="teams" maxlength="120" placeholder="Teams, comma separated" class="field md:col-span-2" aria-label="Teams" value="payments, platform-sre" />
+    <input name="runbook" maxlength="120" placeholder="Runbook" class="field md:col-span-2" aria-label="Runbook" value="RB-CDN-ROLLBACK" />
+    <input name="time_to_resolve_min" type="number" min="0" max="10000" placeholder="Minutes" class="field" aria-label="Minutes to resolve" value="42" />
     <button id="resBtn" class="btn-primary">Retain ↓</button>
     <div id="resOut" class="md:col-span-6"></div>
   </form>
