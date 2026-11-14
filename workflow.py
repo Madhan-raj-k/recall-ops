@@ -118,8 +118,8 @@ must have incident_id null and historical_outcome "unknown", supporting_evidence
 missing_information that no organizational history was available. Never invent incidents or outcomes.
 Give 2-4 actions, the first one a low-risk diagnostic."""
 
-_HIGH = re.compile(r"\b(roll ?back|rollback|restart|delete|drop|flush|failover|terminate|kill|unlink|reindex|re-?apply|purge)\b", re.I)
-_MED = re.compile(r"\b(scale|increase|raise|set|enable|disable|pin|move|change|update|config)\b", re.I)
+_HIGH = re.compile(r"\b(roll(?:ed|ing)? ?back|rollback|restart|delet|drop|flush|failover|terminat|kill|unlink|reindex|re-?appl|purg|redeploy)\w*", re.I)
+_MED = re.compile(r"\b(scal|increas|rais|set|enabl|disabl|pin|mov|chang|updat|config|switch|resiz)\w*", re.I)
 
 
 def risk_of(text: str) -> str:

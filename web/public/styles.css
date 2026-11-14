@@ -157,3 +157,24 @@ button:disabled{opacity:.4;cursor:not-allowed;transform:none!important}
 .ag-action code{font-size:.75rem}
 .ag-big{font-size:2rem;font-weight:700;color:#fff;line-height:1}
 .fast{color:#000;background:#fff;border-radius:999px;padding:.1rem .55rem}
+
+/* evidence-driven workflow */
+.wf-disclosure{border:1px solid rgba(255,255,255,.18);border-radius:.75rem;padding:.6rem .9rem;font-size:.82rem;color:#c8c8c8;background:rgba(255,255,255,.03)}
+.wf-stepper{display:flex;flex-wrap:wrap;gap:.4rem;list-style:none;padding:0}
+.wf-stepper li{font-family:"JetBrains Mono",monospace;font-size:.68rem;letter-spacing:.06em;text-transform:uppercase;padding:.3rem .6rem;border-radius:999px;border:1px solid rgba(255,255,255,.14);color:#8a8a8a}
+.wf-stepper li.on{color:#000;background:#e5e5e5;border-color:#e5e5e5}
+.wf-table{width:100%;border-collapse:collapse;font-size:.83rem}
+.wf-table th,.wf-table td{border-bottom:1px solid rgba(255,255,255,.1);padding:.55rem .6rem;text-align:left;vertical-align:top}
+.wf-table th{font-family:"JetBrains Mono",monospace;font-size:.7rem;color:#a3a3a3;text-transform:uppercase;letter-spacing:.06em}
+.wf-table td:first-child{color:#e5e5e5;white-space:nowrap}
+.wf-k{font-family:"JetBrains Mono",monospace;font-size:.66rem;letter-spacing:.08em;text-transform:uppercase;color:#8f8f8f;margin-top:.7rem}
+.wf-list{margin:.2rem 0 0 1rem;list-style:disc;color:#d4d4d4}
+.wf-card{border:1px solid rgba(255,255,255,.14);border-radius:.8rem;padding:.8rem .9rem;font-size:.83rem;color:#d4d4d4}
+.wf-card.hl{border-color:#fff;box-shadow:0 0 18px rgba(255,255,255,.15)}
+.badge{display:inline-block;font-family:"JetBrains Mono",monospace;font-size:.62rem;letter-spacing:.06em;text-transform:uppercase;padding:.1rem .45rem;border-radius:999px;border:1px solid rgba(255,255,255,.3);color:#d4d4d4;margin-right:.25rem}
+.badge.solid{background:#e5e5e5;color:#000;border-color:#e5e5e5}
+.badge.high{border-color:#fff;color:#fff;font-weight:700}
+.badge.muted{color:#8a8a8a;border-color:rgba(255,255,255,.15)}
+.wf-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:.3rem .9rem;margin-top:.4rem}
+.wf-log{font-family:"JetBrains Mono",monospace;font-size:.72rem;color:#bdbdbd;background:rgba(0,0,0,.35);border-radius:.5rem;padding:.5rem .6rem;margin-top:.5rem;white-space:pre-wrap}
+.wf-card details summary{cursor:pointer;color:#a3a3a3;margin-top:.5rem}

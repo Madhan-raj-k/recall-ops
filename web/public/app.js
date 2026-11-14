@@ -205,103 +205,192 @@ $("exQ").addEventListener("keydown", (e) => { if (e.key === "Enter") explore(); 
 new IntersectionObserver((ents, obs) => { if (ents.some((e) => e.isIntersecting)) { obs.disconnect(); explore(); } }, { rootMargin: "300px" }).observe($("explorer"));
 
 
-// ---------- Live agent loop ----------
+// ---------- Evidence-driven incident workflow ----------
 (() => {
-  if (!$("agSim")) return;
-  const STEPS = ["alert received", "recall", "reason", "act", "learn"];
-  let samples = [], current = null, learned = [], firstRun = null;
-  const status = (t) => ($("agStatus").textContent = t);
-  const post = async (url, body) => {
-    const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-    const j = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(j.detail || `HTTP ${r.status}`);
-    return j;
+  if (!$("wfRun")) return;
+  const STEPS = ["investigate", "recall", "recommend", "approve", "simulate", "verify", "retain", "learn"];
+  const KEY = "recallops-workflow-v1";
+  let W = { alert: "", cmp: null, actions: {}, retained: null, sample: null, pm: null, learn: null };
+  let samples = [];
+  const save = () => { try { sessionStorage.setItem(KEY, JSON.stringify(W)); } catch {} };
+  const status = (t) => ($("wfStatus").textContent = t || "");
+  const post = (url, body) => api(url, { method: "POST", body: JSON.stringify(body) });
+  const li = (xs) => (xs && xs.length ? `<ul class="wf-list">${xs.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>` : '<div class="muted">None</div>');
+
+  function stepper() {
+    const st = Object.values(W.actions);
+    const done = {
+      investigate: !!W.cmp, recall: !!W.cmp && W.cmp.on.historical_incidents.length > 0, recommend: !!W.cmp,
+      approve: st.some((a) => ["approved", "simulated", "verified_passed", "verified_failed"].includes(a.status)),
+      simulate: st.some((a) => ["simulated", "verified_passed", "verified_failed"].includes(a.status)),
+      verify: st.some((a) => a.status === "verified_passed"), retain: !!(W.retained && W.retained.retained),
+      learn: !!(W.learn && W.learn.check && W.learn.check.found),
+    };
+    $("wfStepper").innerHTML = STEPS.map((s) => `<li class="${done[s] ? "on" : ""}">${done[s] ? "✓ " : ""}${s}</li>`).join("");
+  }
+
+  function invCard(r) {
+    const i = r.investigation;
+    const causes = (i.potential_root_causes || []).map((c) => `<li>${esc(c.cause)} <span class="badge ${c.basis === "evidence" ? "solid" : "muted"}">${esc(c.basis)}</span>${(c.incident_ids || []).map((x) => `<span class="badge">${esc(x)}</span>`).join("")}</li>`).join("");
+    const ev = (i.supporting_evidence || []).map((e) => `<li>${esc(e.claim)} <span class="badge">${esc(e.incident_id)}</span></li>`).join("");
+    const pf = (i.previous_failures || []).map((e) => `<li>${esc(e.attempt)} <span class="badge">${esc(e.incident_id)}</span></li>`).join("");
+    return `${warnBox(r.warnings)}${warnBox(i.validation_notes)}
+      <div class="flex flex-wrap gap-1 mb-1"><span class="badge">${r.llm_used ? "Groq LLM" : "deterministic (no LLM)"}</span><span class="badge">memory: ${esc(r.memory_backend)}</span><span class="badge">recall called: ${r.memory_recall_called ? "yes" : "no"}</span><span class="badge">${r.memories_returned} memories</span><span class="badge muted">${r.seconds}s</span></div>
+      <div class="wf-k">Incident summary</div><div>${esc(i.summary)}</div>
+      <div class="wf-k">Affected service</div><div>${esc(i.service || "unknown")}</div>
+      <div class="wf-k">Observed symptoms</div>${li(i.symptoms)}
+      <div class="wf-k">Potential root cause</div>${causes ? `<ul class="wf-list">${causes}</ul>` : '<div class="muted">Unknown</div>'}
+      <div class="wf-k">Supporting evidence (from memory)</div>${ev ? `<ul class="wf-list">${ev}</ul>` : '<div class="muted">No historical evidence.</div>'}
+      <div class="wf-k">Previous failed attempts</div>${pf ? `<ul class="wf-list">${pf}</ul>` : '<div class="muted">None known.</div>'}
+      <div class="wf-k">Missing information</div>${li(i.missing_information)}
+      <div class="wf-k">Historical incidents retrieved</div><div>${r.historical_incidents.map((h) => `<span class="badge">${esc(h.id)}</span>`).join("") || '<span class="muted">None</span>'}</div>
+      <div class="wf-k">Next investigation steps</div>${li(i.next_steps)}`;
+  }
+
+  function simCard(h, hl) {
+    return `<div class="wf-card ${hl ? "hl" : ""}"><div class="flex flex-wrap gap-1"><span class="badge solid">${esc(h.id)}</span>${h.service ? `<span class="badge">${esc(h.service)}</span>` : ""}<span class="badge">outcome: ${esc(h.outcome)}</span>${h.score != null ? `<span class="badge muted" title="${esc(h.score_kind)}">score ${Number(h.score).toFixed(3)}</span>` : ""}</div>
+      <div class="mt-2 text-neutral-100">${esc(h.title || "")}</div>
+      ${h.symptoms ? `<div class="wf-k">Symptoms</div><div>${esc(h.symptoms)}</div>` : ""}
+      ${h.root_cause ? `<div class="wf-k">Root cause</div><div>${esc(h.root_cause)}</div>` : ""}
+      ${h.remediation ? `<div class="wf-k">Remediation</div><div>${esc(h.remediation)}</div>` : ""}
+      ${h.failed_attempts ? `<div class="wf-k">Did not work</div><div>${esc(h.failed_attempts)}</div>` : ""}
+      <div class="wf-k">Why relevant</div><div>Returned by memory recall for this incident (${h.evidence.length} matching fact${h.evidence.length === 1 ? "" : "s"}); source: ${esc(h.record_source)}.</div>
+      <details><summary>Inspect retrieved memory facts</summary>${h.evidence.map((e) => `<div class="wf-log">${esc(e.type)} · ${esc((e.occurred || "").slice(0, 10))}\n${esc(e.text)}</div>`).join("")}</details></div>`;
+  }
+
+  function actionCard(a) {
+    const st = W.actions[a.action_id] || a;
+    const ev = a.evidence_type === "historical evidence";
+    let btns = "";
+    if (st.status === "awaiting_approval") btns = `<button class="btn-primary sm" data-op="approve" data-id="${a.action_id}">Approve</button><button class="btn-ghost sm" data-op="reject" data-id="${a.action_id}">Reject</button>`;
+    else if (st.status === "approved") btns = `<button class="btn-primary sm" data-op="simulate" data-id="${a.action_id}">Run simulated execution</button>`;
+    else if (st.status === "simulated") btns = `<label class="flex items-center gap-2"><input type="checkbox" class="accent-neutral-300" data-chk="${a.action_id}" data-c="${esc(a.verification || "Symptoms back to baseline")}"> ${esc(a.verification || "Symptoms back to baseline")}</label><label class="flex items-center gap-2"><input type="checkbox" class="accent-neutral-300" data-chk="${a.action_id}" data-c="No new related alerts for 10 minutes"> No new related alerts for 10 minutes</label><button class="btn-primary sm" data-op="verify" data-id="${a.action_id}">Record verification</button>`;
+    return `<div class="wf-card ${st.status === "verified_passed" ? "hl" : ""}">
+      <div class="flex flex-wrap items-center gap-1"><span class="badge ${a.risk === "high" ? "high" : ""}">risk: ${esc(a.risk)}</span><span class="badge ${ev ? "solid" : "muted"}">${esc(a.evidence_type)}</span>${a.incident_id ? `<span class="badge">${esc(a.incident_id)}</span>` : ""}<span class="badge">historical outcome: ${esc(a.historical_outcome)}</span><span class="ml-auto badge solid">${esc(st.status_label)}</span></div>
+      <div class="mt-2 text-neutral-100 font-semibold">${esc(a.title)}</div>
+      <div class="wf-grid">
+        <div><div class="wf-k">Explanation</div>${esc(a.explanation || "—")}</div>
+        <div><div class="wf-k">Why recommended</div>${esc(a.why || "—")}</div>
+        <div><div class="wf-k">Previous fix</div>${esc(a.previous_fix || "—")}</div>
+        <div><div class="wf-k">Expected result</div>${esc(a.expected_result || "—")}</div>
+        <div><div class="wf-k">Verification</div>${esc(a.verification || "—")}</div>
+        <div><div class="wf-k">Rollback</div>${esc(a.rollback || "—")}</div>
+      </div>
+      ${a.recorded_remediation ? `<details><summary>Stored record for ${esc(a.incident_id)}</summary><div class="wf-log">Fix that worked: ${esc(a.recorded_remediation)}${a.recorded_failed_attempts ? `\nDid NOT work: ${esc(a.recorded_failed_attempts)}` : ""}</div></details>` : ""}
+      ${st.log ? `<div class="wf-log">${st.log.map(esc).join("\n")}\nreal_infrastructure_changed: false</div>` : ""}
+      ${st.verification ? `<div class="wf-log">${st.verification.map((c) => `${c.passed ? "✓" : "✗"} ${esc(c.check)}`).join("\n")}\n(${esc(st.verification_basis)})</div>` : ""}
+      ${st.error ? errBox(st.error) : ""}
+      <div class="flex flex-wrap items-center gap-3 mt-3">${btns}</div></div>`;
+  }
+
+  function render() {
+    stepper();
+    const c = W.cmp;
+    ["wfCompareBox", "wfInvBox", "wfSimBox", "wfActBox"].forEach((id) => ($(id).hidden = !c));
+    if (c) {
+      $("wfSame").textContent = c.same_input ? "· identical input in both modes ✓" : "";
+      $("wfTable").innerHTML = c.table.map((r) => `<tr><td>${esc(r.attribute)}</td><td>${esc(r.off)}</td><td>${esc(r.on)}</td></tr>`).join("");
+      $("wfInvOff").innerHTML = invCard(c.off);
+      $("wfInvOn").innerHTML = invCard(c.on);
+      $("wfSimilar").innerHTML = c.on.historical_incidents.length ? c.on.historical_incidents.map((h) => simCard(h)).join("")
+        : '<div class="muted">No relevant past incidents were found in memory for this incident. Recommendations below are general diagnostic suggestions.</div>';
+      $("wfActions").innerHTML = c.on.investigation.actions.map(actionCard).join("") || '<div class="muted">No actions proposed.</div>';
+    }
+    const verified = Object.values(W.actions).some((a) => a.status === "verified_passed");
+    $("wfPmBox").hidden = !verified;
+    $("wfLearnBox").hidden = !(W.retained && W.retained.retained);
+    if (W.sample && !$("wfAlert2").value) $("wfAlert2").value = W.sample.followup || W.alert;
+    if (W.pmOut) $("pmOut").innerHTML = W.pmOut;
+    if (W.learnOut) $("wfLearnOut").innerHTML = W.learnOut;
+  }
+
+  async function run() {
+    const alert = $("wfAlert").value.trim();
+    if (!alert) { status("Enter an incident description first."); return; }
+    $("wfRun").disabled = true; status("investigating with Memory OFF and Memory ON… (5–30 s)");
+    try {
+      const c = await post("/api/workflow/compare", { alert });
+      W = { ...W, alert, cmp: c, actions: {}, retained: null, pmOut: "", learnOut: "", learn: null };
+      c.on.investigation.actions.forEach((a) => (W.actions[a.action_id] = { ...a }));
+      const top = (c.on.investigation.potential_root_causes || [])[0];
+      $("pmTitle").value = (W.sample && W.sample.resolution.title) || `Incident on ${c.on.investigation.service || "service"}`;
+      $("pmService").value = c.on.investigation.service || (W.sample && W.sample.service) || "";
+      $("pmCause").value = (top && top.basis === "evidence" ? top.cause : (W.sample && W.sample.resolution.root_cause)) || (top ? top.cause : "");
+      $("pmLessons").value = ""; $("pmPrevent").value = ""; $("pmOut").innerHTML = ""; $("wfLearnOut").innerHTML = "";
+      save(); render(); status(`done · OFF ${c.off.seconds}s · ON ${c.on.seconds}s`);
+    } catch (e) { status(""); $("wfStatus").innerHTML = errBox(e.message); }
+    finally { $("wfRun").disabled = false; }
+  }
+
+  $("wfActions").addEventListener("click", async (ev) => {
+    const b = ev.target.closest("button[data-op]"); if (!b) return;
+    const id = b.dataset.id, op = b.dataset.op, a = W.actions[id];
+    if (op === "approve" && a.risk === "high" && !confirm(`HIGH RISK action:\n${a.title}\n\nApprove for SIMULATED execution?`)) return;
+    const body = { token: a.token, op };
+    if (op === "verify") body.checks = [...document.querySelectorAll(`input[data-chk="${id}"]`)].map((x) => ({ check: x.dataset.c, passed: x.checked }));
+    b.disabled = true;
+    try { const r = await post("/api/workflow/action", body); W.actions[id] = { ...a, ...r, error: null }; }
+    catch (e) { W.actions[id] = { ...a, error: e.message }; }
+    save(); render();
+  });
+
+  function pmBody(retain) {
+    return { alert: W.alert, title: $("pmTitle").value, service: $("pmService").value, severity: (W.sample && W.sample.severity) || "SEV2",
+      root_cause: $("pmCause").value, lessons: $("pmLessons").value, prevention: $("pmPrevent").value, test: $("pmTest").checked,
+      action_tokens: Object.values(W.actions).filter((a) => ["verified_passed", "verified_failed", "rejected"].includes(a.status)).map((a) => a.token), retain };
+  }
+  const pmView = (d) => `<div class="wf-card"><div class="wf-k">Postmortem ${esc(d.incident_id)}</div>
+    <div class="wf-grid"><div><div class="wf-k">Incident summary</div>${esc(d.postmortem.incident_summary)}</div><div><div class="wf-k">Root cause</div>${esc(d.postmortem.root_cause)}</div>
+    <div><div class="wf-k">Actions taken</div>${esc(d.postmortem.actions_taken)}</div><div><div class="wf-k">Result</div>${esc(d.postmortem.result)}</div>
+    <div><div class="wf-k">Rejected / failed</div>${esc(d.postmortem.unsuccessful_or_rejected)}</div><div><div class="wf-k">Lessons learned</div>${esc(d.postmortem.lessons_learned || "—")}</div>
+    <div><div class="wf-k">Prevention</div>${esc(d.postmortem.prevention || "—")}</div></div></div>`;
+  $("pmPreview").onclick = async () => {
+    try { const d = await post("/api/workflow/postmortem", pmBody(false)); W.pmOut = pmView(d); }
+    catch (e) { W.pmOut = errBox(e.message); }
+    save(); render();
   };
-  function drawSteps(run, pending) {
-    const done = Object.fromEntries((run?.steps || []).map((s) => [s.name, s]));
-    $("agSteps").innerHTML = STEPS.map((n) => {
-      const s = done[n];
-      const skip = run?.fast_path && n === "reason";
-      const cls = s ? "done" : skip ? "skip" : "";
-      const detail = s ? esc(s.detail) : skip ? "skipped: known fix" : pending && n !== "learn" ? "…" : "";
-      return `<li class="ag-step ${cls}"><b>${esc(n)}${s ? `<span class="ms">${s.ms}ms</span>` : ""}</b>${detail}</li>`;
-    }).join("");
-  }
-  function drawMatches(ms) {
-    $("agMatches").innerHTML = (ms || []).length ? ms.map((m) => `<li class="ag-match ${m.learned ? "learned" : ""}">
-      <div class="id">${esc(m.id)}${m.learned ? ' · <span class="fast">learned</span>' : ""}${m.score != null ? ` · score ${Number(m.score).toFixed(2)}` : ""}${m.ttr ? ` · fixed in ${m.ttr} min` : ""}</div>
-      <div class="mt-1 text-neutral-100">${esc(m.title || "")}</div>
-      ${m.what_worked ? `<div class="mt-1 text-neutral-400"><b>Worked:</b> ${esc(m.what_worked)}</div>` : ""}
-      ${m.what_failed ? `<div class="mt-1 text-neutral-500"><b>Failed:</b> ${esc(m.what_failed)}</div>` : ""}</li>`).join("")
-      : '<li class="muted text-sm">No similar incidents in memory.</li>';
-  }
-  function drawAction(a) {
-    if (!a || !a.summary) return ($("agAction").innerHTML = "");
-    $("agAction").innerHTML = `<div class="ag-action"><div class="font-mono text-[11px] tracking-widest text-neutral-300">PROPOSED ACTION · ${esc(a.mode)}</div>
-      <div class="mt-1 text-neutral-100">${esc(a.summary)}</div>
-      ${a.command ? `<div class="mt-1"><code>${esc(a.command)} --dry-run</code></div>` : ""}
-      <div class="mt-1 text-neutral-400">Status: ${esc(a.status)}${a.based_on ? ` · based on ${esc(a.based_on)}` : ""} · notify ${esc(a.notify)}</div></div>`;
-  }
-  async function fire(alert) {
-    $("agAlert").textContent = alert;
-    drawSteps(null, true); status("agent running…");
-    $("agPlan").classList.add("muted"); $("agPlan").textContent = "Recalling similar incidents and reasoning…";
-    $("agBadge").textContent = ""; $("agAction").innerHTML = "";
-    const t0 = performance.now();
-    const run = await post("/api/agent/run", { alert, learned });
-    run.wall = (performance.now() - t0) / 1000;
-    drawSteps(run); drawMatches(run.matches); drawAction(run.action);
-    streamIn($("agPlan"), warnBox(run.warnings) + md(run.plan));
-    $("agBadge").innerHTML = run.fast_path ? '<span class="fast">FAST PATH · learned</span>' :
-      `${run.llm_used ? "LLM" : "offline"} · memory: ${esc(run.memory_backend)}`;
-    status(`done in ${run.wall.toFixed(1)}s · est. time-to-resolve ${run.est_ttr_min ?? "?"} min`);
-    return run;
-  }
-  function compare(a, b) {
-    const col = (t, r) => `<div class="sub ${r.fast_path ? "sub-on" : ""}"><div class="sub-h">${t}</div>
-      <div class="grid grid-cols-3 gap-2 mt-2"><div><div class="ag-big">${r.wall.toFixed(1)}s</div><div class="text-neutral-400">agent time</div></div>
-      <div><div class="ag-big">${r.steps.length}</div><div class="text-neutral-400">steps</div></div>
-      <div><div class="ag-big">${r.est_ttr_min ?? "?"}m</div><div class="text-neutral-400">est. resolve</div></div></div>
-      <div class="mt-2 text-neutral-400">${r.fast_path ? "Matched the incident it just learned, applied the known fix with high confidence." : "Recalled history, reasoned from scratch, proposed fix for approval."}</div></div>`;
-    $("agCmpBody").innerHTML = col("Alert #1 · before learning", a) + col("Alert #2 · after learning", b);
-    $("agCmp").hidden = false;
-  }
-  fetch("/api/agent/samples").then((r) => r.json()).then((j) => {
+  $("pmRetain").onclick = async () => {
+    $("pmRetain").disabled = true; $("pmOut").innerHTML = '<div class="muted">writing to memory… (can take 10–30 s)</div>';
+    try {
+      const d = await post("/api/workflow/postmortem", pmBody(true));
+      const r = d.retention;
+      if (r.retained || (r.duplicate && W.retained && W.retained.retained)) W.retained = { ...r, retained: true };
+      const msg = r.retained ? `<div class="text-neutral-100">✓ ${esc(r.message)} (backend: ${esc(d.memory_backend)})</div>`
+        : r.duplicate ? `<div class="warn">${esc(r.message)}</div>` : errBox(`${r.message} ${r.error || ""}`);
+      W.pmOut = msg + pmView(d);
+    } catch (e) { W.pmOut = errBox(e.message); }
+    finally { $("pmRetain").disabled = false; save(); render(); }
+  };
+
+  $("wfLearnRun").onclick = async () => {
+    const alert = $("wfAlert2").value.trim(); if (!alert || !W.retained) return;
+    $("wfLearnRun").disabled = true; $("wfLearnOut").innerHTML = '<div class="muted">recalling and investigating…</div>';
+    try {
+      const [inv, check] = await Promise.all([post("/api/workflow/investigate", { alert, use_memory: true }),
+        post("/api/workflow/recall-check", { alert, incident_id: W.retained.incident_id })]);
+      W.learn = { inv, check };
+      const id = W.retained.incident_id;
+      const before = W.cmp.on.historical_incidents.map((h) => h.id);
+      const hit = inv.historical_incidents.find((h) => h.id === id);
+      W.learnOut = `<div class="wf-card"><div class="wf-k">Before learning (first incident)</div><div>${before.map((x) => `<span class="badge">${esc(x)}</span>`).join("") || "none"}</div>
+          <div class="wf-k">Retained postmortem</div><div><span class="badge solid">${esc(id)}</span> was not in memory yet.</div></div>
+        <div class="wf-card hl"><div class="wf-k">After learning (related incident)</div><div>${inv.historical_incidents.map((h) => `<span class="badge ${h.id === id ? "solid" : ""}">${esc(h.id)}</span>`).join("") || "none"}</div>
+          <div class="wf-k">Recall check</div><div>${check.found ? `✓ Memory returned ${esc(id)} (${check.matching_facts.length} fact(s), incident rank ${check.rank ?? "n/a"} of returned incidents).` : `✗ ${esc(id)} was not returned by recall for this text (yet). Try wording closer to the original, or retry in a few seconds.`}</div>
+          ${check.matching_facts.length ? `<details><summary>Retrieved facts</summary>${check.matching_facts.map((f) => `<div class="wf-log">${esc(f)}</div>`).join("")}</details>` : ""}
+          ${hit ? `<div class="wf-k">How it's used</div><div>The new investigation's top incidents include the retained postmortem, so its fix and failed attempts feed the recommendations.</div>` : ""}</div>
+        <div class="md:col-span-2">${invCard(inv)}</div>`;
+    } catch (e) { W.learnOut = errBox(e.message); }
+    finally { $("wfLearnRun").disabled = false; save(); render(); }
+  };
+
+  $("wfRun").onclick = run;
+  $("wfReset").onclick = () => { sessionStorage.removeItem(KEY); W = { alert: "", cmp: null, actions: {}, retained: null, sample: null }; $("wfAlert").value = ""; $("wfAlert2").value = ""; $("pmOut").innerHTML = ""; $("wfLearnOut").innerHTML = ""; status(""); render(); };
+  $("wfPick").onchange = () => { const s = samples.find((x) => x.key === $("wfPick").value); if (s) { W.sample = s; $("wfAlert").value = s.alert; $("wfAlert2").value = s.followup; } };
+  api("/api/agent/samples").then((j) => {
     samples = j.samples || [];
-    $("agPick").innerHTML = '<option value="">random sample</option>' + samples.map((s) => `<option value="${esc(s.key)}">${esc(s.key)}</option>`).join("");
+    $("wfPick").innerHTML = '<option value="">Pick a sample incident…</option>' + samples.map((s) => `<option value="${esc(s.key)}">${esc(s.alert.slice(0, 70))}…</option>`).join("");
   }).catch(() => {});
-  drawSteps(null);
-  $("agSim").addEventListener("click", async () => {
-    $("agSim").disabled = true; $("agCmp").hidden = true; $("agAgain").disabled = true; $("agLearnOut").innerHTML = "";
-    try {
-      const key = $("agPick").value;
-      current = samples.find((s) => s.key === key) || samples[Math.floor(Math.random() * samples.length)];
-      if (!current) current = await (await fetch("/api/agent/simulate")).json();
-      firstRun = await fire(current.alert);
-      $("agCause").value = current.resolution.root_cause; $("agFix").value = current.resolution.what_worked;
-      $("agLearnBox").hidden = false;
-    } catch (e) { $("agPlan").innerHTML = errBox(e.message); status("error"); }
-    finally { $("agSim").disabled = false; }
-  });
-  $("agLearn").addEventListener("click", async () => {
-    if (!current) return;
-    $("agLearn").disabled = true; $("agLearnOut").textContent = "retaining to memory…";
-    try {
-      const r = current.resolution;
-      const out = await post("/api/agent/learn", { ...r, service: current.service, severity: current.severity,
-        root_cause: $("agCause").value, what_worked: $("agFix").value });
-      learned = [out.learned, ...learned.filter((l) => l.id !== out.learned.id)].slice(0, 10);
-      const done = [...$("agSteps").children].pop(); if (done) { done.className = "ag-step done"; done.innerHTML = `<b>learn</b>retained ${esc(out.learned.id)}`; }
-      $("agLearnOut").innerHTML = warnBox(out.warnings) + `<div class="text-neutral-200">✓ Retained <b>${esc(out.learned.id)}</b> ${out.stored ? "to long-term memory" : "(session only)"}. Now fire a similar alert.</div>`;
-      $("agAgain").disabled = false;
-    } catch (e) { $("agLearnOut").innerHTML = errBox(e.message); }
-    finally { $("agLearn").disabled = false; }
-  });
-  $("agAgain").addEventListener("click", async () => {
-    if (!current) return;
-    $("agAgain").disabled = true;
-    try { const second = await fire(current.followup); if (firstRun) compare(firstRun, second); }
-    catch (e) { $("agPlan").innerHTML = errBox(e.message); }
-    finally { $("agAgain").disabled = false; }
-  });
+  api("/api/health").then((h) => ($("wfBackend").textContent = `memory: ${h.memory} · llm: ${h.llm || "none (deterministic fallback)"}`)).catch(() => ($("wfBackend").textContent = "API unreachable"));
+  try { const saved = JSON.parse(sessionStorage.getItem(KEY) || "null"); if (saved && saved.cmp) { W = saved; $("wfAlert").value = W.alert; status("restored your in-progress workflow"); } } catch {}
+  render();
 })();
