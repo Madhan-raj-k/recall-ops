@@ -30,6 +30,7 @@ from incidents_data import DEMO_ALERTS  # noqa: E402
 from llm import build_llm  # noqa: E402
 from memory import HindsightIncidentMemory, InMemoryIncidentMemory, MemoryError_, build_memory  # noqa: E402
 from incidents_data import seed_incidents  # noqa: E402
+from demo_agent import SAMPLE_ALERTS, learn as agent_learn, parse_webhook, run_agent  # noqa: E402
 
 app = FastAPI(title="RecallOps API", docs_url="/api/docs", openapi_url="/api/openapi.json")
 settings = load_settings()
@@ -37,7 +38,7 @@ settings = load_settings()
 MAX_ALERT = 500
 MAX_FIELD = 1200
 # Best-effort per-IP limits (per warm instance). Public demo running on the owner's keys.
-LIMITS = {"triage": (12, 600), "resolve": (4, 600), "explore": (20, 600), "learning": (10, 600)}
+LIMITS = {"triage": (12, 600), "resolve": (4, 600), "explore": (20, 600), "learning": (10, 600), "agent": (30, 600)}
 _hits: dict[tuple[str, str], deque] = defaultdict(deque)
 _lock = threading.Lock()
 
@@ -246,6 +247,93 @@ def lc_resolve(body: LCResolveIn, request: Request):
     mem = _sandbox(body.sandbox)
     try:
         return _resolve(body, mem)
+    finally:
+        mem.close()
+
+
+# ---------- Live agent loop: simulate -> recall -> reason -> act -> learn ----------
+@app.get("/api/agent/samples")
+def agent_samples():
+    return {"samples": SAMPLE_ALERTS}
+
+
+@app.get("/api/agent/simulate")
+def agent_simulate(key: str = ""):
+    pool = [s for s in SAMPLE_ALERTS if s["key"] == key] or SAMPLE_ALERTS
+    import random
+
+    return random.choice(pool)
+
+
+class LearnedIn(BaseModel):
+    id: str = Field(..., max_length=60)
+    title: str = Field("", max_length=200)
+    service: str = Field("", max_length=80)
+    severity: str = Field("SEV2", max_length=8)
+    symptoms: str = Field("", max_length=MAX_FIELD)
+    root_cause: str = Field("", max_length=MAX_FIELD)
+    what_worked: str = Field("", max_length=MAX_FIELD)
+    what_failed: str = Field("", max_length=MAX_FIELD)
+    ttr: int | None = Field(default=None, ge=0, le=10000)
+
+
+class AgentRunIn(BaseModel):
+    alert: str = Field(..., max_length=MAX_ALERT * 2)
+    learned: list[LearnedIn] = Field(default_factory=list, max_length=10)
+
+
+def _agent_run(alert: str, learned: list[dict]):
+    alert = _clean(alert, MAX_ALERT)
+    if not alert:
+        raise HTTPException(422, "Alert text is empty.")
+    mem = _memory()
+    try:
+        backend = "hindsight" if settings.hindsight_ready else "offline"
+        return run_agent(alert, mem, build_llm(settings), learned=learned, memory_backend=backend).to_dict()
+    finally:
+        mem.close()
+
+
+@app.post("/api/agent/run")
+def agent_run(body: AgentRunIn, request: Request):
+    _rate_limit(request, "agent")
+    return _agent_run(body.alert, [l.model_dump() for l in body.learned])
+
+
+@app.post("/api/agent/webhook")
+async def agent_webhook(request: Request):
+    """Alert webhook: plain {"alert": "..."}, Prometheus Alertmanager or PagerDuty-style JSON."""
+    _rate_limit(request, "agent")
+    try:
+        payload = await request.json()
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(422, "Body must be JSON.") from exc
+    return _agent_run(parse_webhook(payload), [])
+
+
+class AgentLearnIn(BaseModel):
+    title: str = Field(..., max_length=120)
+    service: str = Field(..., max_length=80)
+    severity: str = "SEV2"
+    symptoms: str = Field("", max_length=MAX_FIELD)
+    root_cause: str = Field(..., max_length=MAX_FIELD)
+    what_worked: str = Field(..., max_length=MAX_FIELD)
+    what_failed: str = Field("", max_length=MAX_FIELD)
+    teams: str = Field("", max_length=120)
+    runbook: str = Field("", max_length=120)
+    time_to_resolve_min: int | None = Field(default=None, ge=0, le=10000)
+
+
+@app.post("/api/agent/learn")
+def agent_learn_ep(body: AgentLearnIn, request: Request):
+    _rate_limit(request, "resolve")
+    if body.severity not in {"SEV1", "SEV2", "SEV3", "SEV4"}:
+        raise HTTPException(422, "Severity must be SEV1-SEV4.")
+    mem = _memory()
+    try:
+        return agent_learn(mem, **body.model_dump())
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
     finally:
         mem.close()
 
