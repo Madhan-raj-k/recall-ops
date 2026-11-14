@@ -184,3 +184,7 @@ button.loading::after{content:"";position:absolute;width:14px;height:14px;border
   .steps{grid-template-columns:1fr}
   .panel{min-height:0}
 }
+/* ambient background motion */
+#bgfx{position:fixed;inset:0;z-index:0;pointer-events:none}
+.app{position:relative;z-index:1}
+.sidebar{background:rgba(14,14,16,.82);backdrop-filter:blur(6px)}
