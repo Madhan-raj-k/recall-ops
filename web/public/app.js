@@ -203,3 +203,105 @@ $("exBtn").onclick = explore;
 $("exQ").addEventListener("keydown", (e) => { if (e.key === "Enter") explore(); });
 // Load the explorer when it scrolls into view (saves an API call for bouncing visitors).
 new IntersectionObserver((ents, obs) => { if (ents.some((e) => e.isIntersecting)) { obs.disconnect(); explore(); } }, { rootMargin: "300px" }).observe($("explorer"));
+
+
+// ---------- Live agent loop ----------
+(() => {
+  if (!$("agSim")) return;
+  const STEPS = ["alert received", "recall", "reason", "act", "learn"];
+  let samples = [], current = null, learned = [], firstRun = null;
+  const status = (t) => ($("agStatus").textContent = t);
+  const post = async (url, body) => {
+    const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.detail || `HTTP ${r.status}`);
+    return j;
+  };
+  function drawSteps(run, pending) {
+    const done = Object.fromEntries((run?.steps || []).map((s) => [s.name, s]));
+    $("agSteps").innerHTML = STEPS.map((n) => {
+      const s = done[n];
+      const skip = run?.fast_path && n === "reason";
+      const cls = s ? "done" : skip ? "skip" : "";
+      const detail = s ? esc(s.detail) : skip ? "skipped: known fix" : pending && n !== "learn" ? "…" : "";
+      return `<li class="ag-step ${cls}"><b>${esc(n)}${s ? `<span class="ms">${s.ms}ms</span>` : ""}</b>${detail}</li>`;
+    }).join("");
+  }
+  function drawMatches(ms) {
+    $("agMatches").innerHTML = (ms || []).length ? ms.map((m) => `<li class="ag-match ${m.learned ? "learned" : ""}">
+      <div class="id">${esc(m.id)}${m.learned ? ' · <span class="fast">learned</span>' : ""}${m.score != null ? ` · score ${Number(m.score).toFixed(2)}` : ""}${m.ttr ? ` · fixed in ${m.ttr} min` : ""}</div>
+      <div class="mt-1 text-neutral-100">${esc(m.title || "")}</div>
+      ${m.what_worked ? `<div class="mt-1 text-neutral-400"><b>Worked:</b> ${esc(m.what_worked)}</div>` : ""}
+      ${m.what_failed ? `<div class="mt-1 text-neutral-500"><b>Failed:</b> ${esc(m.what_failed)}</div>` : ""}</li>`).join("")
+      : '<li class="muted text-sm">No similar incidents in memory.</li>';
+  }
+  function drawAction(a) {
+    if (!a || !a.summary) return ($("agAction").innerHTML = "");
+    $("agAction").innerHTML = `<div class="ag-action"><div class="font-mono text-[11px] tracking-widest text-neutral-300">PROPOSED ACTION · ${esc(a.mode)}</div>
+      <div class="mt-1 text-neutral-100">${esc(a.summary)}</div>
+      ${a.command ? `<div class="mt-1"><code>${esc(a.command)} --dry-run</code></div>` : ""}
+      <div class="mt-1 text-neutral-400">Status: ${esc(a.status)}${a.based_on ? ` · based on ${esc(a.based_on)}` : ""} · notify ${esc(a.notify)}</div></div>`;
+  }
+  async function fire(alert) {
+    $("agAlert").textContent = alert;
+    drawSteps(null, true); status("agent running…");
+    $("agPlan").classList.add("muted"); $("agPlan").textContent = "Recalling similar incidents and reasoning…";
+    $("agBadge").textContent = ""; $("agAction").innerHTML = "";
+    const t0 = performance.now();
+    const run = await post("/api/agent/run", { alert, learned });
+    run.wall = (performance.now() - t0) / 1000;
+    drawSteps(run); drawMatches(run.matches); drawAction(run.action);
+    streamIn($("agPlan"), warnBox(run.warnings) + md(run.plan));
+    $("agBadge").innerHTML = run.fast_path ? '<span class="fast">FAST PATH · learned</span>' :
+      `${run.llm_used ? "LLM" : "offline"} · memory: ${esc(run.memory_backend)}`;
+    status(`done in ${run.wall.toFixed(1)}s · est. time-to-resolve ${run.est_ttr_min ?? "?"} min`);
+    return run;
+  }
+  function compare(a, b) {
+    const col = (t, r) => `<div class="sub ${r.fast_path ? "sub-on" : ""}"><div class="sub-h">${t}</div>
+      <div class="grid grid-cols-3 gap-2 mt-2"><div><div class="ag-big">${r.wall.toFixed(1)}s</div><div class="text-neutral-400">agent time</div></div>
+      <div><div class="ag-big">${r.steps.length}</div><div class="text-neutral-400">steps</div></div>
+      <div><div class="ag-big">${r.est_ttr_min ?? "?"}m</div><div class="text-neutral-400">est. resolve</div></div></div>
+      <div class="mt-2 text-neutral-400">${r.fast_path ? "Matched the incident it just learned, applied the known fix with high confidence." : "Recalled history, reasoned from scratch, proposed fix for approval."}</div></div>`;
+    $("agCmpBody").innerHTML = col("Alert #1 · before learning", a) + col("Alert #2 · after learning", b);
+    $("agCmp").hidden = false;
+  }
+  fetch("/api/agent/samples").then((r) => r.json()).then((j) => {
+    samples = j.samples || [];
+    $("agPick").innerHTML = '<option value="">random sample</option>' + samples.map((s) => `<option value="${esc(s.key)}">${esc(s.key)}</option>`).join("");
+  }).catch(() => {});
+  drawSteps(null);
+  $("agSim").addEventListener("click", async () => {
+    $("agSim").disabled = true; $("agCmp").hidden = true; $("agAgain").disabled = true; $("agLearnOut").innerHTML = "";
+    try {
+      const key = $("agPick").value;
+      current = samples.find((s) => s.key === key) || samples[Math.floor(Math.random() * samples.length)];
+      if (!current) current = await (await fetch("/api/agent/simulate")).json();
+      firstRun = await fire(current.alert);
+      $("agCause").value = current.resolution.root_cause; $("agFix").value = current.resolution.what_worked;
+      $("agLearnBox").hidden = false;
+    } catch (e) { $("agPlan").innerHTML = errBox(e.message); status("error"); }
+    finally { $("agSim").disabled = false; }
+  });
+  $("agLearn").addEventListener("click", async () => {
+    if (!current) return;
+    $("agLearn").disabled = true; $("agLearnOut").textContent = "retaining to memory…";
+    try {
+      const r = current.resolution;
+      const out = await post("/api/agent/learn", { ...r, service: current.service, severity: current.severity,
+        root_cause: $("agCause").value, what_worked: $("agFix").value });
+      learned = [out.learned, ...learned.filter((l) => l.id !== out.learned.id)].slice(0, 10);
+      const done = [...$("agSteps").children].pop(); if (done) { done.className = "ag-step done"; done.innerHTML = `<b>learn</b>retained ${esc(out.learned.id)}`; }
+      $("agLearnOut").innerHTML = warnBox(out.warnings) + `<div class="text-neutral-200">✓ Retained <b>${esc(out.learned.id)}</b> ${out.stored ? "to long-term memory" : "(session only)"}. Now fire a similar alert.</div>`;
+      $("agAgain").disabled = false;
+    } catch (e) { $("agLearnOut").innerHTML = errBox(e.message); }
+    finally { $("agLearn").disabled = false; }
+  });
+  $("agAgain").addEventListener("click", async () => {
+    if (!current) return;
+    $("agAgain").disabled = true;
+    try { const second = await fire(current.followup); if (firstRun) compare(firstRun, second); }
+    catch (e) { $("agPlan").innerHTML = errBox(e.message); }
+    finally { $("agAgain").disabled = false; }
+  });
+})();

@@ -22,6 +22,20 @@ copilot doesn't help: with no history it can only say "check recent deploys, loo
 and it will happily suggest the exact fix that wasted 20 minutes last month (e.g. *scaling pods*
 for a connection-pool bug). The knowledge exists — it just isn't *remembered* at the moment it matters.
 
+
+## Live agent loop (finale demo)
+
+The **Live agent** section on the web app runs the full loop end to end:
+
+1. **Simulate alert**: click the button, or POST to `/api/agent/webhook` (plain `{"alert": "..."}`, Prometheus Alertmanager, or PagerDuty-style JSON).
+2. **Recall**: Hindsight `recall` returns facts, which are grouped into the top 3 similar past incidents.
+3. **Reason**: the LLM writes a plan with a visible **Reasoning** section that cites those incidents.
+4. **Act**: proposes a safe **dry-run** remediation that waits for on-call approval.
+5. **Learn**: *Mark resolved & learn* retains the resolution to memory. Fire a similar alert and the agent takes the **fast path**: it matches the learned incident, skips deep reasoning, and the before/after panel shows agent time, steps and estimated time to resolve.
+
+API: `GET /api/agent/samples`, `GET /api/agent/simulate`, `POST /api/agent/run`, `POST /api/agent/learn`, `POST /api/agent/webhook`.
+Without `HINDSIGHT_API_KEY` or `GROQ_API_KEY`, it falls back to a seeded in-memory bank and a deterministic offline plan, so the demo always works.
+
 ## Before / after (real run)
 
 Alert: `PagerDuty SEV1: payments-api 5xx rate 22% on /v2/charge, started 6 minutes after deploy v3.21.0`

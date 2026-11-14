@@ -28,7 +28,7 @@
 <header class="hud-top">
   <a href="#top" class="brand"><span class="brand-dot"></span>RecallOps</a>
   <nav class="hidden md:flex gap-6 text-[13px] text-neutral-400">
-    <a href="#problem">Problem</a><a href="#triage">Triage</a><a href="#learning">Learning curve</a><a href="#resolve">Retain</a><a href="#explorer">Memory</a><a href="#how">How it works</a>
+    <a href="#agent">Live agent</a><a href="#problem">Problem</a><a href="#triage">Triage</a><a href="#learning">Learning curve</a><a href="#resolve">Retain</a><a href="#explorer">Memory</a><a href="#how">How it works</a>
   </nav>
   <a href="https://github.com/Madhan-raj-k/recall-ops" class="btn-ghost text-[13px]">GitHub ↗</a>
 </header>
@@ -40,7 +40,8 @@
   <h1 class="hero-title"><span class="line">Your on-call agent</span><span class="line glow-text">that never forgets.</span></h1>
   <p class="hero-sub reveal">The fix for tonight's outage is already in last month's postmortem. RecallOps dives into your incident memory, surfaces what worked (and what <em>failed</em>), and hands the engineer a ranked plan, in seconds.</p>
   <div class="flex flex-wrap gap-3 mt-9 reveal">
-    <a href="#triage" class="btn-primary">Dive into a live incident ↓</a>
+    <a href="#agent" class="btn-primary">Run the live agent ↓</a>
+    <a href="#triage" class="btn-ghost">Memory OFF vs ON</a>
     <a href="#learning" class="btn-ghost">Watch it learn</a>
   </div>
   <div class="hero-meta reveal">
@@ -49,6 +50,51 @@
     <div><b>1</b><span>postmortem to change the answer</span></div>
   </div>
   <div class="scroll-hint" aria-hidden="true"><span></span>scroll to descend</div>
+</section>
+
+<!-- LIVE AGENT -->
+<section id="agent" class="sect">
+  <div class="kicker">live agent loop</div>
+  <h2 class="h2 reveal">Alert in. Memory recalled. Fix proposed. Lesson learned.</h2>
+  <p class="lead reveal">Fire a simulated alert (or POST one to <code>/api/agent/webhook</code>). The agent recalls the most similar past incidents from Hindsight, reasons out a fix, proposes a safe dry-run action, and after you resolve it, retains the lesson. Fire a similar alert again and watch it take the fast path.</p>
+  <div class="glass p-5 md:p-6 mt-8 reveal">
+    <div class="flex flex-wrap items-center gap-3">
+      <button id="agSim" class="btn-primary">⚡ Simulate alert</button>
+      <select id="agPick" class="field !w-auto text-sm" aria-label="Sample alert"></select>
+      <span id="agStatus" class="ml-auto font-mono text-xs text-neutral-400"></span>
+    </div>
+    <div class="mt-4 font-mono text-[11px] tracking-widest text-neutral-200/70">INCOMING ALERT</div>
+    <div id="agAlert" class="mt-2 font-mono text-sm text-neutral-100 min-h-[1.5rem]">—</div>
+    <ol id="agSteps" class="ag-steps mt-5"></ol>
+  </div>
+  <div class="grid lg:grid-cols-5 gap-5 mt-5">
+    <div class="glass p-5 lg:col-span-2">
+      <h3 class="h3">① Recalled: top similar incidents</h3>
+      <ul id="agMatches" class="mem-list"><li class="muted text-sm">Waiting for an alert.</li></ul>
+    </div>
+    <div class="glass p-5 lg:col-span-3">
+      <div class="flex items-baseline gap-3"><h3 class="h3">② Reasoning &amp; fix</h3><span id="agBadge" class="font-mono text-xs"></span></div>
+      <div id="agPlan" class="md out muted text-sm">The plan, with the agent's reasoning, appears here.</div>
+      <div id="agAction" class="mt-4"></div>
+    </div>
+  </div>
+  <div class="glass p-5 md:p-6 mt-5" id="agLearnBox" hidden>
+    <h3 class="h3">③ Resolve &amp; learn</h3>
+    <p class="text-sm text-neutral-400 mt-1">Confirm what actually fixed it. This is retained to memory so the next similar alert resolves faster.</p>
+    <div class="grid md:grid-cols-2 gap-3 mt-3 text-sm">
+      <textarea id="agCause" rows="2" class="field" aria-label="Root cause" placeholder="Root cause"></textarea>
+      <textarea id="agFix" rows="2" class="field" aria-label="What fixed it" placeholder="What fixed it"></textarea>
+    </div>
+    <div class="flex flex-wrap gap-3 mt-3">
+      <button id="agLearn" class="btn-primary">Mark resolved &amp; learn</button>
+      <button id="agAgain" class="btn-ghost" disabled>⚡ Fire a similar alert</button>
+    </div>
+    <div id="agLearnOut" class="mt-3 text-sm"></div>
+  </div>
+  <div class="glass p-5 md:p-6 mt-5" id="agCmp" hidden>
+    <h3 class="h3">④ Did it learn?</h3>
+    <div class="grid md:grid-cols-2 gap-4 mt-3 text-sm" id="agCmpBody"></div>
+  </div>
 </section>
 
 <!-- PROBLEM -->
