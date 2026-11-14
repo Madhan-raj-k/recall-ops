@@ -28,7 +28,7 @@
 <header class="hud-top">
   <a href="#top" class="brand"><span class="brand-dot"></span>RecallOps</a>
   <nav class="hidden md:flex gap-6 text-[13px] text-neutral-400">
-    <a href="#agent">Incident workflow</a><a href="#problem">Problem</a><a href="#triage">Triage</a><a href="#learning">Learning curve</a><a href="#resolve">Retain</a><a href="#explorer">Memory</a><a href="#how">How it works</a>
+    <a href="#agent">Incident workflow</a><a href="#triage">Triage</a><a href="#learning">Learning curve</a><a href="#resolve">Retain</a><a href="#explorer">Memory</a><a href="#how">How it works</a>
   </nav>
   <a href="https://github.com/Madhan-raj-k/recall-ops" class="btn-ghost text-[13px]">GitHub ↗</a>
 </header>
@@ -117,17 +117,6 @@
     <textarea id="wfAlert2" maxlength="500" rows="2" class="field mt-3" aria-label="Related incident"></textarea>
     <button id="wfLearnRun" class="btn-primary sm mt-3">Re-investigate with Memory ON</button>
     <div id="wfLearnOut" class="grid md:grid-cols-2 gap-4 mt-4 text-sm"></div>
-  </div>
-</section>
-
-<!-- PROBLEM -->
-<section id="problem" class="sect">
-  <div class="kicker">the problem</div>
-  <h2 class="h2 reveal">At 3 AM, nobody remembers last month's outage.</h2>
-  <div class="grid md:grid-cols-3 gap-5 mt-10">
-    <div class="glass p-6 reveal"><div class="stat">3×</div><p>The same payments service broke after a deploy three times in eight weeks, with three different root causes.</p></div>
-    <div class="glass p-6 reveal"><div class="stat">20 min</div><p>Lost each time someone scaled the pods again. Two postmortems already said <em>scaling did nothing</em>.</p></div>
-    <div class="glass p-6 reveal"><div class="stat">0</div><p>Things a generic LLM copilot knows about <em>your</em> history. It gives the textbook checklist, every time.</p></div>
   </div>
 </section>
 
@@ -235,14 +224,14 @@
         <linearGradient id="g1" x1="0" x2="1"><stop offset="0" stop-color="#d6d6d6"/><stop offset="1" stop-color="#bbbbbb"/></linearGradient>
         <filter id="glow"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
       </defs>
-      <path class="flow" d="M150 70 C 300 70, 330 130, 450 130" />
-      <path class="flow" d="M150 190 C 300 190, 330 130, 450 130" />
-      <path class="flow" d="M450 130 C 570 130, 600 130, 750 130" />
-      <g class="dnode"><circle cx="110" cy="70" r="34"/><text x="110" y="75">postmortem</text></g>
-      <g class="dnode"><circle cx="110" cy="190" r="34"/><text x="110" y="195">alert</text></g>
+      <path class="flow" d="M156 70 C 290 70, 320 130, 388 130" />
+      <path class="flow" d="M156 190 C 290 190, 320 130, 388 130" />
+      <path class="flow" d="M512 130 L 728 130" style="stroke:#cfcfcf" />
+      <g class="dnode"><circle cx="105" cy="70" r="50"/><text x="105" y="75">postmortem</text></g>
+      <g class="dnode"><circle cx="105" cy="190" r="50"/><text x="105" y="195">alert</text></g>
       <g class="dnode big"><circle cx="450" cy="130" r="62" filter="url(#glow)"/><text x="450" y="125">Hindsight</text><text x="450" y="145" class="small">memory bank</text></g>
-      <g class="dnode"><circle cx="790" cy="130" r="40"/><text x="790" y="135">ranked plan</text></g>
-      <text x="290" y="58" class="lbl">retain()</text><text x="290" y="222" class="lbl">recall() + reflect()</text><text x="600" y="118" class="lbl">grounded context → LLM</text>
+      <g class="dnode"><circle cx="785" cy="130" r="56"/><text x="785" y="126">ranked</text><text x="785" y="143">plan</text></g>
+      <text x="270" y="50" class="lbl" text-anchor="middle">retain()</text><text x="270" y="232" class="lbl" text-anchor="middle">recall() + reflect()</text><text x="615" y="114" class="lbl" text-anchor="middle">context → LLM</text>
     </svg>
     <div class="grid md:grid-cols-3 gap-4 mt-6 text-sm">
       <div class="sub"><div class="font-mono text-neutral-200">retain()</div><p class="mt-2 text-neutral-300">Each postmortem goes in with its real incident timestamp, the incident ID as <code>document_id</code>, and tags like <code>service:payments-api</code>. Hindsight extracts facts and entities and links them.</p></div>
